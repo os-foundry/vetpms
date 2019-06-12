@@ -4,8 +4,17 @@
      machine:
        image: ubuntu-1604:201903-01
      steps:
-       - checkout                              # Get the source code.
-       - run: docker pull postgres:11.1-alpine # Download the DB image used in tests.
+       - checkout
+       - run:
+           name: Install Go 1.12.6
+           command: |
+               wget -O go.tgz https://golang.org/dl/go1.12.6.linux-amd64.tar.gz
+               tar -C /usr/local -xzf go.tgz
+               rm go.tgz
+               go version
+       - run:
+           name: Download the DB image used in tests
+           command: docker pull postgres:11.1-alpine
        - run:
            name: Run tests
            command: go test -v ./...
