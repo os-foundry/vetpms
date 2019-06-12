@@ -8,9 +8,11 @@
        - run:
            name: Install Go 1.12.6
            command: |
+               sudo rm -rf /usr/local/go
                wget -O go.tgz https://golang.org/dl/go1.12.6.linux-amd64.tar.gz
                tar -C /usr/local -xzf go.tgz
                rm go.tgz
+               which go
                go version
        - run:
            name: Download the DB image used in tests
