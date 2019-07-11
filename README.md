@@ -1,9 +1,9 @@
-# Ultimate Service
+# Veterinary Practition Mangement Suit (VetPMS)
 
-[![CircleCI](https://circleci.com/gh/ardanlabs/service.svg?style=svg)](https://circleci.com/gh/ardanlabs/service)
+[![CircleCI](https://circleci.com/gh/os-foundry/vetpms.svg?style=svg)](https://circleci.com/gh/os-foundry/vetpms)
 
-Copyright 2018, 2019, Ardan Labs  
-info@ardanlabs.com
+Copyright 2019, UAB "Sonemas" (part of the OS Foundry Network)
+office@osfoundry.com
 
 ## Licensing
 
@@ -20,55 +20,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ```
-
-## Description
-
-This starter kit is a starting point for building production grade scalable web service applications. The goal of this project is to provide a proven starting point for new projects that reduce the repetitive tasks in getting a new project launched to production. It uses minimal dependencies, implements idiomatic code and follows Go best practices. Collectively, the project lays out everything logically to minimize guess work and enable engineers to quickly maintain a mental model for the project. This inturn will make current developers happy and expedite on-boarding of new engineers.
-
-This project should not be considered a web framework. Coding is a discovery process and with that, this project leaves you in control of your project’s architecture and development. There are five areas of expertise that an engineer or their engineering team must do for a project to grow and scale. Based on our experience, a few core decisions were made for each of these areas that help you focus initially on writing the business logic.
-
-* Micro level - Since business applications require data storage this project implements Postgres. The implementation facilitates the data semantics that define the data being captured and their relationships.
-* Macro level - The project architecture and design provides basic project structure and foundation for development.
-* Business logic - Defines an example Go packages that helps illustrate where value generating activities should reside and how the code will be delivered to clients.
-* Deployment and Operations - Integrates with CircleCI and GCP/GKE for serverless deployments.
-* Observability - Implements OpenCensus and Go standard library support to facilitate observability.
-
-This project contains the following features:
-
-* Minimal web application using standard html/template package.
-* Middleware integration.
-* Database support using Postgres.
-* CRUD based pattern.
-* Role-based access control (RBAC).
-* Account signup and user management.
-* Distributed logging and tracing.
-* Integration with Opencensus for enterprise-level observability.
-* Testing patterns.
-* Use of Docker, Docker Compose, and Makefiles.
-* Vendoring dependencies with Modules, requires Go 1.12 or higher.
-* Continuous deployment pipeline.
-* Serverless deployments.
-* CLI with boilerplate templates to reduce repetitive copy/pasting.
-* Integration with CircleCI for enterprise-level CI/CD.
-
 ## Local Installation
 
 This project contains three services and uses 3rd party services such as MongoDB and Zipkin. Docker is required to run this software on your local machine.
-
-### Getting the project
-
-You can use the traditional `go get` command to download this project into your configured GOPATH.
-
-```
-$ GO111MODULE=off go get -u gitHub.com/ardanlabs/service
-```
 
 ### Go Modules
 
 This project is using Go Module support for vendoring dependencies. We are using the `tidy` and `vendor` commands to maintain the dependencies and make sure the project can create reproducible builds. This project assumes the source code will be inside your GOPATH within the traditional location.
 
 ```
-$ cd $GOPATH/src/github.com/ardanlabs/service
+$ cd $GOPATH/src/github.com/os-foundry/vetpms
 $ GO111MODULE=off go mod tidy
 $ GO111MODULE=off go mod vendor
 ```
@@ -92,7 +53,7 @@ A `makefile` has also been provide to make building, running and testing the sof
 Navigate to the root of the project and use the `makefile` to build all of the services.
 
 ```
-$ cd $GOPATH/src/github.com/ardanlabs/service
+$ cd $GOPATH/src/github.com/os-foundry/vetpms
 $ make all
 ```
 
@@ -101,7 +62,7 @@ $ make all
 Navigate to the root of the project and use the `makefile` to run all of the services.
 
 ```
-$ cd $GOPATH/src/github.com/ardanlabs/service
+$ cd $GOPATH/src/github.com/os-foundry/vetpms
 $ make up
 ```
 
@@ -126,7 +87,7 @@ The service provides record keeping for someone running a multi-family garage sa
 
 <!--The service uses the following models:-->
 
-<!--<img src="https://raw.githubusercontent.com/ardanlabs/service/master/models.jpg" alt="Garage Sale Service Models" title="Garage Sale Service Models" />-->
+<!--<img src="https://raw.githubusercontent.com/os-foundry/vetpms/master/models.jpg" alt="Garage Sale Service Models" title="Garage Sale Service Models" />-->
 
 <!--(Diagram generated with draw.io using `models.xml` file)-->
 

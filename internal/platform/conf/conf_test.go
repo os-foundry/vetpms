@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ardanlabs/service/internal/platform/conf"
+	"github.com/os-foundry/vetpms/internal/platform/conf"
 	"github.com/google/go-cmp/cmp"
 )
 

@@ -15,13 +15,13 @@ import (
 	"time"
 
 	"contrib.go.opencensus.io/exporter/zipkin"
-	"github.com/ardanlabs/service/cmd/sales-api/internal/handlers"
-	"github.com/ardanlabs/service/internal/platform/auth"
-	"github.com/ardanlabs/service/internal/platform/conf"
-	"github.com/ardanlabs/service/internal/platform/database"
 	jwt "github.com/dgrijalva/jwt-go"
 	openzipkin "github.com/openzipkin/zipkin-go"
 	zipkinHTTP "github.com/openzipkin/zipkin-go/reporter/http"
+	"github.com/os-foundry/vetpms/cmd/vetpms-api/internal/handlers"
+	"github.com/os-foundry/vetpms/internal/platform/auth"
+	"github.com/os-foundry/vetpms/internal/platform/conf"
+	"github.com/os-foundry/vetpms/internal/platform/database"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 )
@@ -54,7 +54,7 @@ func run() error {
 	// =========================================================================
 	// Logging
 
-	log := log.New(os.Stdout, "SALES : ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
+	log := log.New(os.Stdout, "VETPMS : ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
 
 	// =========================================================================
 	// Configuration
@@ -82,14 +82,14 @@ func run() error {
 		Zipkin struct {
 			LocalEndpoint string  `conf:"default:0.0.0.0:3000"`
 			ReporterURI   string  `conf:"default:http://zipkin:9411/api/v2/spans"`
-			ServiceName   string  `conf:"default:sales-api"`
+			ServiceName   string  `conf:"default:vetpms-api"`
 			Probability   float64 `conf:"default:0.05"`
 		}
 	}
 
-	if err := conf.Parse(os.Args[1:], "SALES", &cfg); err != nil {
+	if err := conf.Parse(os.Args[1:], "VETPMS", &cfg); err != nil {
 		if err == conf.ErrHelpWanted {
-			usage, err := conf.Usage("SALES", &cfg)
+			usage, err := conf.Usage("VETPMS", &cfg)
 			if err != nil {
 				return errors.Wrap(err, "generating config usage")
 			}
@@ -159,7 +159,7 @@ func run() error {
 
 	log.Println("main : Started : Initializing zipkin tracing support")
 
-	localEndpoint, err := openzipkin.NewEndpoint("sales-api", cfg.Zipkin.LocalEndpoint)
+	localEndpoint, err := openzipkin.NewEndpoint("vetpms-api", cfg.Zipkin.LocalEndpoint)
 	if err != nil {
 		return err
 	}

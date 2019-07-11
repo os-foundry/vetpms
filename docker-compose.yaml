@@ -24,14 +24,14 @@ services:
     container_name: metrics
     networks:
       - shared-network
-    image: gcr.io/sales-api/metrics-amd64:1.0
+    image: gcr.io/vetpms-api/metrics-amd64:1.0
     ports:
       - 3001:3001 # EXPVAR API
       - 4001:4001 # DEBUG API
 
   # This starts a local PostgreSQL DB.
   db:
-    container_name: sales_db
+    container_name: vetpms_db
     networks:
       - shared-network
     image: postgres:11.1-alpine
@@ -39,17 +39,17 @@ services:
       - 5432:5432
 
   # This is the core CRUD based service.
-  sales-api:
-    container_name: sales-api
+  vetpms-api:
+    container_name: vetpms-api
     networks:
       - shared-network
-    image: gcr.io/sales-api/sales-api-amd64:1.0
+    image: gcr.io/vetpms-api/vetpms-api-amd64:1.0
     ports:
       - 3000:3000 # CRUD API
       - 4000:4000 # DEBUG API
     environment:
-      - SALES_DB_HOST=db
-      - SALES_DB_DISABLE_TLS=1 # This is only disabled for our development enviroment.
+      - VETPMS_DB_HOST=db
+      - VETPMS_DB_DISABLE_TLS=1 # This is only disabled for our development enviroment.
       # - GODEBUG=gctrace=1
     depends_on:
       - metrics

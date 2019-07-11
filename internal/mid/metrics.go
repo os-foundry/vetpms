@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"runtime"
 
-	"github.com/ardanlabs/service/internal/platform/web"
+	"github.com/os-foundry/vetpms/internal/platform/web"
 	"go.opencensus.io/trace"
 )
 

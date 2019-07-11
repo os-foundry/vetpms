@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ardanlabs/service/internal/platform/auth"
-	"github.com/ardanlabs/service/internal/platform/web"
+	"github.com/os-foundry/vetpms/internal/platform/auth"
+	"github.com/os-foundry/vetpms/internal/platform/web"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 )

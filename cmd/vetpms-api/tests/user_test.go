@@ -9,13 +9,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ardanlabs/service/cmd/sales-api/internal/handlers"
-	"github.com/ardanlabs/service/internal/platform/auth"
-	"github.com/ardanlabs/service/internal/platform/web"
-	"github.com/ardanlabs/service/internal/tests"
-	"github.com/ardanlabs/service/internal/user"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/os-foundry/vetpms/cmd/vetpms-api/internal/handlers"
+	"github.com/os-foundry/vetpms/internal/platform/auth"
+	"github.com/os-foundry/vetpms/internal/platform/web"
+	"github.com/os-foundry/vetpms/internal/tests"
+	"github.com/os-foundry/vetpms/internal/user"
 )
 
 // TestUsers is the entry point for testing user management functions.
@@ -402,7 +402,7 @@ func (ut *UserTests) crudUser(t *testing.T) {
 func (ut *UserTests) postUser201(t *testing.T) user.User {
 	nu := user.NewUser{
 		Name:            "Bill Kennedy",
-		Email:           "bill@ardanlabs.com",
+		Email:           "bill@example.com",
 		Roles:           []string{auth.RoleAdmin},
 		Password:        "gophers",
 		PasswordConfirm: "gophers",
@@ -440,7 +440,7 @@ func (ut *UserTests) postUser201(t *testing.T) user.User {
 			// fields like ID and Dates so we copy u.
 			want := u
 			want.Name = "Bill Kennedy"
-			want.Email = "bill@ardanlabs.com"
+			want.Email = "bill@example.com"
 			want.Roles = []string{auth.RoleAdmin}
 
 			if diff := cmp.Diff(want, u); diff != "" {
@@ -502,7 +502,7 @@ func (ut *UserTests) getUser200(t *testing.T, id string) {
 			want := u
 			want.ID = id
 			want.Name = "Bill Kennedy"
-			want.Email = "bill@ardanlabs.com"
+			want.Email = "bill@example.com"
 			want.Roles = []string{auth.RoleAdmin}
 
 			if diff := cmp.Diff(want, u); diff != "" {
@@ -555,8 +555,8 @@ func (ut *UserTests) putUser204(t *testing.T, id string) {
 			}
 			t.Logf("\t%s\tShould see an updated Name.", tests.Success)
 
-			if ru.Email != "bill@ardanlabs.com" {
-				t.Fatalf("\t%s\tShould not affect other fields like Email : got %q want %q", tests.Failed, ru.Email, "bill@ardanlabs.com")
+			if ru.Email != "bill@example.com" {
+				t.Fatalf("\t%s\tShould not affect other fields like Email : got %q want %q", tests.Failed, ru.Email, "bill@example.com")
 			}
 			t.Logf("\t%s\tShould not affect other fields like Email.", tests.Success)
 		}

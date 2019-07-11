@@ -1,23 +1,23 @@
 SHELL := /bin/bash
 
-all: keys sales-api metrics
+all: keys vetpms-api metrics
 
 keys:
-	go run ./cmd/sales-admin/main.go keygen private.pem
+	go run ./cmd/vetpms-admin/main.go keygen private.pem
 
 admin:
-	go run ./cmd/sales-admin/main.go --db-disable-tls=1 useradd admin@example.com gophers
+	go run ./cmd/vetpms-admin/main.go --db-disable-tls=1 useradd admin@example.com gophers
 
 migrate:
-	go run ./cmd/sales-admin/main.go --db-disable-tls=1 migrate
+	go run ./cmd/vetpms-admin/main.go --db-disable-tls=1 migrate
 
 seed: migrate
-	go run ./cmd/sales-admin/main.go --db-disable-tls=1 seed
+	go run ./cmd/vetpms-admin/main.go --db-disable-tls=1 seed
 
-sales-api:
+vetpms-api:
 	docker build \
-		-t gcr.io/sales-api/sales-api-amd64:1.0 \
-		--build-arg PACKAGE_NAME=sales-api \
+		-t gcr.io/vetpms-api/vetpms-api-amd64:1.0 \
+		--build-arg PACKAGE_NAME=vetpms-api \
 		--build-arg VCS_REF=`git rev-parse HEAD` \
 		--build-arg BUILD_DATE=`date -u +”%Y-%m-%dT%H:%M:%SZ”` \
 		.
@@ -25,7 +25,7 @@ sales-api:
 
 metrics:
 	docker build \
-		-t gcr.io/sales-api/metrics-amd64:1.0 \
+		-t gcr.io/vetpms-api/metrics-amd64:1.0 \
 		--build-arg PACKAGE_NAME=metrics \
 		--build-arg PACKAGE_PREFIX=sidecar/ \
 		--build-arg VCS_REF=`git rev-parse HEAD` \
@@ -40,7 +40,7 @@ down:
 	docker-compose down
 
 test:
-	cd "$$GOPATH/src/github.com/ardanlabs/service"
+	cd "$$GOPATH/src/github.com/os-foundry/vetpms"
 	go test ./...
 
 clean:
@@ -56,27 +56,27 @@ remove-all:
 # GKE
 
 config:
-	@echo Setting environment for sales-api
-	gcloud config set project sales-api
+	@echo Setting environment for vetpms-api
+	gcloud config set project vetpms-api
 	gcloud config set compute/zone us-central1-b
 	gcloud auth configure-docker
 	@echo ======================================================================
 
 project:
-	gcloud projects create sales-api
-	gcloud beta billing projects link sales-api --billing-account=$(ACCOUNT_ID)
+	gcloud projects create vetpms-api
+	gcloud beta billing projects link vetpms-api --billing-account=$(ACCOUNT_ID)
 	gcloud services enable container.googleapis.com
 	@echo ======================================================================
 
 cluster:
-	gcloud container clusters create sales-api-cluster --num-nodes=2 --machine-type=n1-standard-2
+	gcloud container clusters create vetpms-api-cluster --num-nodes=2 --machine-type=n1-standard-2
 	gcloud compute instances list
 	@echo ======================================================================
 
 upload:
-	docker push gcr.io/sales-api/sales-api-amd64:1.0
-	docker push gcr.io/sales-api/metrics-amd64:1.0
-	docker push gcr.io/sales-api/tracer-amd64:1.0
+	docker push gcr.io/vetpms-api/vetpms-api-amd64:1.0
+	docker push gcr.io/vetpms-api/metrics-amd64:1.0
+	docker push gcr.io/vetpms-api/tracer-amd64:1.0
 	@echo ======================================================================
 
 database:
@@ -85,8 +85,8 @@ database:
 	@echo ======================================================================
 
 services:
-	kubectl create -f gke-deploy-sales-api.yaml
-	kubectl expose -f gke-expose-sales-api.yaml --type=LoadBalancer
+	kubectl create -f gke-deploy-vetpms-api.yaml
+	kubectl expose -f gke-expose-vetpms-api.yaml --type=LoadBalancer
 	@echo ======================================================================
 
 shell:
@@ -97,15 +97,15 @@ status:
 	gcloud container clusters list
 	kubectl get nodes
 	kubectl get pods
-	kubectl get services sales-api
+	kubectl get services vetpms-api
 	@echo ======================================================================
 
 delete:
-	kubectl delete services sales-api
-	kubectl delete deployment sales-api	
-	gcloud container clusters delete sales-api-cluster
-	gcloud projects delete sales-api
-	docker image remove gcr.io/sales-api/sales-api-amd64:1.0
-	docker image remove gcr.io/sales-api/metrics-amd64:1.0
-	docker image remove gcr.io/sales-api/tracer-amd64:1.0
+	kubectl delete services vetpms-api
+	kubectl delete deployment vetpms-api	
+	gcloud container clusters delete vetpms-api-cluster
+	gcloud projects delete vetpms-api
+	docker image remove gcr.io/vetpms-api/vetpms-api-amd64:1.0
+	docker image remove gcr.io/vetpms-api/metrics-amd64:1.0
+	docker image remove gcr.io/vetpms-api/tracer-amd64:1.0
 	@echo ======================================================================

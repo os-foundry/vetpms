@@ -1,4 +1,4 @@
-module github.com/ardanlabs/service
+module github.com/os-foundry/vetpms
 
 require (
 	contrib.go.opencensus.io/exporter/zipkin v0.1.1

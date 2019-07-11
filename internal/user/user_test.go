@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ardanlabs/service/internal/platform/auth"
-	"github.com/ardanlabs/service/internal/tests"
-	"github.com/ardanlabs/service/internal/user"
 	"github.com/google/go-cmp/cmp"
+	"github.com/os-foundry/vetpms/internal/platform/auth"
+	"github.com/os-foundry/vetpms/internal/tests"
+	"github.com/os-foundry/vetpms/internal/user"
 	"github.com/pkg/errors"
 )
 
@@ -32,7 +32,7 @@ func TestUser(t *testing.T) {
 
 			nu := user.NewUser{
 				Name:            "Bill Kennedy",
-				Email:           "bill@ardanlabs.com",
+				Email:           "bill@example.com",
 				Roles:           []string{auth.RoleAdmin},
 				Password:        "gophers",
 				PasswordConfirm: "gophers",
@@ -57,7 +57,7 @@ func TestUser(t *testing.T) {
 
 			upd := user.UpdateUser{
 				Name:  tests.StringPointer("Jacob Walker"),
-				Email: tests.StringPointer("jacob@ardanlabs.com"),
+				Email: tests.StringPointer("jacob@example.com"),
 			}
 
 			if err := user.Update(ctx, claims, db, u.ID, upd, now); err != nil {
@@ -114,7 +114,7 @@ func TestAuthenticate(t *testing.T) {
 
 			nu := user.NewUser{
 				Name:            "Anna Walker",
-				Email:           "anna@ardanlabs.com",
+				Email:           "anna@example.com",
 				Roles:           []string{auth.RoleAdmin},
 				Password:        "goroutines",
 				PasswordConfirm: "goroutines",
@@ -128,7 +128,7 @@ func TestAuthenticate(t *testing.T) {
 			}
 			t.Logf("\t%s\tShould be able to create user.", tests.Success)
 
-			claims, err := user.Authenticate(ctx, db, now, "anna@ardanlabs.com", "goroutines")
+			claims, err := user.Authenticate(ctx, db, now, "anna@example.com", "goroutines")
 			if err != nil {
 				t.Fatalf("\t%s\tShould be able to generate claims : %s.", tests.Failed, err)
 			}

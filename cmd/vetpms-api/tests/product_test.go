@@ -9,12 +9,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ardanlabs/service/cmd/sales-api/internal/handlers"
-	"github.com/ardanlabs/service/internal/platform/web"
-	"github.com/ardanlabs/service/internal/product"
-	"github.com/ardanlabs/service/internal/tests"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/os-foundry/vetpms/cmd/vetpms-api/internal/handlers"
+	"github.com/os-foundry/vetpms/internal/platform/web"
+	"github.com/os-foundry/vetpms/internal/product"
+	"github.com/os-foundry/vetpms/internal/tests"
 )
 
 // TestProducts runs a series of tests to exercise Product behavior from the

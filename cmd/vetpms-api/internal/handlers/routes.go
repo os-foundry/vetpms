@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/ardanlabs/service/internal/mid"
-	"github.com/ardanlabs/service/internal/platform/auth" // Import is removed in final PR
-	"github.com/ardanlabs/service/internal/platform/web"
+	"github.com/os-foundry/vetpms/internal/mid"
+	"github.com/os-foundry/vetpms/internal/platform/auth" // Import is removed in final PR
+	"github.com/os-foundry/vetpms/internal/platform/web"
 	"github.com/jmoiron/sqlx"
 )
 

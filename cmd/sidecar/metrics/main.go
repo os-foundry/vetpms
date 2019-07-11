@@ -10,10 +10,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ardanlabs/service/cmd/sidecar/metrics/internal/collector"
-	"github.com/ardanlabs/service/cmd/sidecar/metrics/internal/publisher"
-	"github.com/ardanlabs/service/cmd/sidecar/metrics/internal/publisher/expvar"
-	"github.com/ardanlabs/service/internal/platform/conf"
+	"github.com/os-foundry/vetpms/cmd/sidecar/metrics/internal/collector"
+	"github.com/os-foundry/vetpms/cmd/sidecar/metrics/internal/publisher"
+	"github.com/os-foundry/vetpms/cmd/sidecar/metrics/internal/publisher/expvar"
+	"github.com/os-foundry/vetpms/internal/platform/conf"
 )
 
 func main() {
@@ -42,7 +42,7 @@ func main() {
 			ShutdownTimeout time.Duration `conf:"default:5s"`
 		}
 		Collect struct {
-			From string `conf:"default:http://sales-api:4000/debug/vars"`
+			From string `conf:"default:http://vetpms-api:4000/debug/vars"`
 		}
 		Publish struct {
 			To       string        `conf:"default:console"`

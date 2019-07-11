@@ -4,9 +4,9 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/ardanlabs/service/internal/platform/auth"
-	"github.com/ardanlabs/service/internal/platform/web"
-	"github.com/ardanlabs/service/internal/product"
+	"github.com/os-foundry/vetpms/internal/platform/auth"
+	"github.com/os-foundry/vetpms/internal/platform/web"
+	"github.com/os-foundry/vetpms/internal/product"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"

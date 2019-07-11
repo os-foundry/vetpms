@@ -13,11 +13,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/ardanlabs/service/internal/platform/auth"
-	"github.com/ardanlabs/service/internal/platform/conf"
-	"github.com/ardanlabs/service/internal/platform/database"
-	"github.com/ardanlabs/service/internal/schema"
-	"github.com/ardanlabs/service/internal/user"
+	"github.com/os-foundry/vetpms/internal/platform/auth"
+	"github.com/os-foundry/vetpms/internal/platform/conf"
+	"github.com/os-foundry/vetpms/internal/platform/database"
+	"github.com/os-foundry/vetpms/internal/schema"
+	"github.com/os-foundry/vetpms/internal/user"
 	"github.com/pkg/errors"
 )
 
@@ -44,9 +44,9 @@ func run() error {
 		Args conf.Args
 	}
 
-	if err := conf.Parse(os.Args[1:], "SALES", &cfg); err != nil {
+	if err := conf.Parse(os.Args[1:], "VETPMS", &cfg); err != nil {
 		if err == conf.ErrHelpWanted {
-			usage, err := conf.Usage("SALES", &cfg)
+			usage, err := conf.Usage("VETPMS", &cfg)
 			if err != nil {
 				return errors.Wrap(err, "generating usage")
 			}

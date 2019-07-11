@@ -9,12 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ardanlabs/service/internal/platform/auth"
-	"github.com/ardanlabs/service/internal/platform/database"
-	"github.com/ardanlabs/service/internal/platform/database/databasetest"
-	"github.com/ardanlabs/service/internal/platform/web"
-	"github.com/ardanlabs/service/internal/schema"
-	"github.com/ardanlabs/service/internal/user"
+	"github.com/os-foundry/vetpms/internal/platform/auth"
+	"github.com/os-foundry/vetpms/internal/platform/database"
+	"github.com/os-foundry/vetpms/internal/platform/database/databasetest"
+	"github.com/os-foundry/vetpms/internal/platform/web"
+	"github.com/os-foundry/vetpms/internal/schema"
+	"github.com/os-foundry/vetpms/internal/user"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
