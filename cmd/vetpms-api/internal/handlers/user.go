@@ -4,10 +4,11 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/os-foundry/vetpms/internal/platform/auth"
 	"github.com/os-foundry/vetpms/internal/platform/web"
 	"github.com/os-foundry/vetpms/internal/user"
-	"github.com/jmoiron/sqlx"
+	userPq "github.com/os-foundry/vetpms/internal/user/postgres"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 )
@@ -25,7 +26,7 @@ func (u *User) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	ctx, span := trace.StartSpan(ctx, "handlers.User.List")
 	defer span.End()
 
-	usrs, err := user.List(ctx, u.db)
+	usrs, err := userPq.List(ctx, u.db)
 	if err != nil {
 		return err
 	}
@@ -43,7 +44,7 @@ func (u *User) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return errors.New("claims missing from context")
 	}
 
-	usr, err := user.Retrieve(ctx, claims, u.db, params["id"])
+	usr, err := userPq.Retrieve(ctx, claims, u.db, params["id"])
 	if err != nil {
 		switch err {
 		case user.ErrInvalidID:
@@ -75,7 +76,7 @@ func (u *User) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrap(err, "")
 	}
 
-	usr, err := user.Create(ctx, u.db, nu, v.Now)
+	usr, err := userPq.Create(ctx, u.db, nu, v.Now)
 	if err != nil {
 		return errors.Wrapf(err, "User: %+v", &usr)
 	}
@@ -103,7 +104,7 @@ func (u *User) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrap(err, "")
 	}
 
-	err := user.Update(ctx, claims, u.db, params["id"], upd, v.Now)
+	err := userPq.Update(ctx, claims, u.db, params["id"], upd, v.Now)
 	if err != nil {
 		switch err {
 		case user.ErrInvalidID:
@@ -125,7 +126,7 @@ func (u *User) Delete(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ctx, span := trace.StartSpan(ctx, "handlers.User.Delete")
 	defer span.End()
 
-	err := user.Delete(ctx, u.db, params["id"])
+	err := userPq.Delete(ctx, u.db, params["id"])
 	if err != nil {
 		switch err {
 		case user.ErrInvalidID:
@@ -159,7 +160,7 @@ func (u *User) Token(ctx context.Context, w http.ResponseWriter, r *http.Request
 		return web.NewRequestError(err, http.StatusUnauthorized)
 	}
 
-	claims, err := user.Authenticate(ctx, u.db, v.Now, email, pass)
+	claims, err := userPq.Authenticate(ctx, u.db, v.Now, email, pass)
 	if err != nil {
 		switch err {
 		case user.ErrAuthenticationFailure:

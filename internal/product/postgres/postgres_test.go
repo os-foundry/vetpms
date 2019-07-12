@@ -1,14 +1,15 @@
-package product_test
+package postgres_test
 
 import (
 	"context"
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/os-foundry/vetpms/internal/platform/auth"
 	"github.com/os-foundry/vetpms/internal/product"
+	productPq "github.com/os-foundry/vetpms/internal/product/postgres"
 	"github.com/os-foundry/vetpms/internal/tests"
-	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 )
 
@@ -35,13 +36,13 @@ func TestProduct(t *testing.T) {
 				now, time.Hour,
 			)
 
-			p, err := product.Create(ctx, db, claims, np, now)
+			p, err := productPq.Create(ctx, db, claims, np, now)
 			if err != nil {
 				t.Fatalf("\t%s\tShould be able to create a product : %s.", tests.Failed, err)
 			}
 			t.Logf("\t%s\tShould be able to create a product.", tests.Success)
 
-			saved, err := product.Retrieve(ctx, db, p.ID)
+			saved, err := productPq.Retrieve(ctx, db, p.ID)
 			if err != nil {
 				t.Fatalf("\t%s\tShould be able to retrieve product by ID: %s.", tests.Failed, err)
 			}
@@ -59,12 +60,12 @@ func TestProduct(t *testing.T) {
 			}
 			updatedTime := time.Date(2019, time.January, 1, 1, 1, 1, 0, time.UTC)
 
-			if err := product.Update(ctx, db, claims, p.ID, upd, updatedTime); err != nil {
+			if err := productPq.Update(ctx, db, claims, p.ID, upd, updatedTime); err != nil {
 				t.Fatalf("\t%s\tShould be able to update product : %s.", tests.Failed, err)
 			}
 			t.Logf("\t%s\tShould be able to update product.", tests.Success)
 
-			saved, err = product.Retrieve(ctx, db, p.ID)
+			saved, err = productPq.Retrieve(ctx, db, p.ID)
 			if err != nil {
 				t.Fatalf("\t%s\tShould be able to retrieve updated product : %s.", tests.Failed, err)
 			}
@@ -87,12 +88,12 @@ func TestProduct(t *testing.T) {
 				Name: tests.StringPointer("Graphic Novels"),
 			}
 
-			if err := product.Update(ctx, db, claims, p.ID, upd, updatedTime); err != nil {
+			if err := productPq.Update(ctx, db, claims, p.ID, upd, updatedTime); err != nil {
 				t.Fatalf("\t%s\tShould be able to update just some fields of product : %s.", tests.Failed, err)
 			}
 			t.Logf("\t%s\tShould be able to update just some fields of product.", tests.Success)
 
-			saved, err = product.Retrieve(ctx, db, p.ID)
+			saved, err = productPq.Retrieve(ctx, db, p.ID)
 			if err != nil {
 				t.Fatalf("\t%s\tShould be able to retrieve updated product : %s.", tests.Failed, err)
 			}
@@ -104,12 +105,12 @@ func TestProduct(t *testing.T) {
 				t.Logf("\t%s\tShould be able to see updated Name field.", tests.Success)
 			}
 
-			if err := product.Delete(ctx, db, p.ID); err != nil {
+			if err := productPq.Delete(ctx, db, p.ID); err != nil {
 				t.Fatalf("\t%s\tShould be able to delete product : %s.", tests.Failed, err)
 			}
 			t.Logf("\t%s\tShould be able to delete product.", tests.Success)
 
-			saved, err = product.Retrieve(ctx, db, p.ID)
+			saved, err = productPq.Retrieve(ctx, db, p.ID)
 			if errors.Cause(err) != product.ErrNotFound {
 				t.Fatalf("\t%s\tShould NOT be able to retrieve deleted product : %s.", tests.Failed, err)
 			}

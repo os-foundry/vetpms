@@ -18,6 +18,7 @@ import (
 	"github.com/os-foundry/vetpms/internal/platform/database"
 	"github.com/os-foundry/vetpms/internal/schema"
 	"github.com/os-foundry/vetpms/internal/user"
+	userPq "github.com/os-foundry/vetpms/internal/user/postgres"
 	"github.com/pkg/errors"
 )
 
@@ -149,7 +150,7 @@ func useradd(cfg database.Config, email, password string) error {
 		Roles:           []string{auth.RoleAdmin, auth.RoleUser},
 	}
 
-	u, err := user.Create(ctx, db, nu, time.Now())
+	u, err := userPq.Create(ctx, db, nu, time.Now())
 	if err != nil {
 		return err
 	}

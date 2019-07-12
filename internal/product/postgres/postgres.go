@@ -1,36 +1,24 @@
-package product
+package postgres
 
 import (
 	"context"
 	"database/sql"
 	"time"
 
-	"github.com/os-foundry/vetpms/internal/platform/auth"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/os-foundry/vetpms/internal/platform/auth"
+	"github.com/os-foundry/vetpms/internal/product"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 )
 
-// Predefined errors identify expected failure conditions.
-var (
-	// ErrNotFound is used when a specific Product is requested but does not exist.
-	ErrNotFound = errors.New("Product not found")
-
-	// ErrInvalidID is used when an invalid UUID is provided.
-	ErrInvalidID = errors.New("ID is not in its proper form")
-
-	// ErrForbidden occurs when a user tries to do something that is forbidden to
-	// them according to our access control policies.
-	ErrForbidden = errors.New("Attempted action is not allowed")
-)
-
 // List gets all Products from the database.
-func List(ctx context.Context, db *sqlx.DB) ([]Product, error) {
+func List(ctx context.Context, db *sqlx.DB) ([]product.Product, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.product.List")
 	defer span.End()
 
-	products := []Product{}
+	products := []product.Product{}
 	const q = `SELECT
 			p.*,
 			COALESCE(SUM(s.quantity) ,0) AS sold,
@@ -48,11 +36,11 @@ func List(ctx context.Context, db *sqlx.DB) ([]Product, error) {
 
 // Create adds a Product to the database. It returns the created Product with
 // fields like ID and DateCreated populated..
-func Create(ctx context.Context, db *sqlx.DB, user auth.Claims, np NewProduct, now time.Time) (*Product, error) {
+func Create(ctx context.Context, db *sqlx.DB, user auth.Claims, np product.NewProduct, now time.Time) (*product.Product, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.product.Create")
 	defer span.End()
 
-	p := Product{
+	p := product.Product{
 		ID:          uuid.New().String(),
 		Name:        np.Name,
 		Cost:        np.Cost,
@@ -79,15 +67,15 @@ func Create(ctx context.Context, db *sqlx.DB, user auth.Claims, np NewProduct, n
 }
 
 // Retrieve finds the product identified by a given ID.
-func Retrieve(ctx context.Context, db *sqlx.DB, id string) (*Product, error) {
+func Retrieve(ctx context.Context, db *sqlx.DB, id string) (*product.Product, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.product.Retrieve")
 	defer span.End()
 
 	if _, err := uuid.Parse(id); err != nil {
-		return nil, ErrInvalidID
+		return nil, product.ErrInvalidID
 	}
 
-	var p Product
+	var p product.Product
 
 	const q = `SELECT
 			p.*,
@@ -100,7 +88,7 @@ func Retrieve(ctx context.Context, db *sqlx.DB, id string) (*Product, error) {
 
 	if err := db.GetContext(ctx, &p, q, id); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrNotFound
+			return nil, product.ErrNotFound
 		}
 
 		return nil, errors.Wrap(err, "selecting single product")
@@ -111,7 +99,7 @@ func Retrieve(ctx context.Context, db *sqlx.DB, id string) (*Product, error) {
 
 // Update modifies data about a Product. It will error if the specified ID is
 // invalid or does not reference an existing Product.
-func Update(ctx context.Context, db *sqlx.DB, user auth.Claims, id string, update UpdateProduct, now time.Time) error {
+func Update(ctx context.Context, db *sqlx.DB, user auth.Claims, id string, update product.UpdateProduct, now time.Time) error {
 	ctx, span := trace.StartSpan(ctx, "internal.product.Update")
 	defer span.End()
 
@@ -124,7 +112,7 @@ func Update(ctx context.Context, db *sqlx.DB, user auth.Claims, id string, updat
 	// and you are not the owner of this product ...
 	// then get outta here!
 	if !user.HasRole(auth.RoleAdmin) && p.UserID != user.Subject {
-		return ErrForbidden
+		return product.ErrForbidden
 	}
 
 	if update.Name != nil {
@@ -161,7 +149,7 @@ func Delete(ctx context.Context, db *sqlx.DB, id string) error {
 	defer span.End()
 
 	if _, err := uuid.Parse(id); err != nil {
-		return ErrInvalidID
+		return product.ErrInvalidID
 	}
 
 	const q = `DELETE FROM products WHERE product_id = $1`

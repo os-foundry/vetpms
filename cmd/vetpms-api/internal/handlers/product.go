@@ -4,10 +4,11 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/os-foundry/vetpms/internal/platform/auth"
 	"github.com/os-foundry/vetpms/internal/platform/web"
 	"github.com/os-foundry/vetpms/internal/product"
-	"github.com/jmoiron/sqlx"
+	productPq "github.com/os-foundry/vetpms/internal/product/postgres"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 )
@@ -24,7 +25,7 @@ func (p *Product) List(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	ctx, span := trace.StartSpan(ctx, "handlers.Product.List")
 	defer span.End()
 
-	products, err := product.List(ctx, p.db)
+	products, err := productPq.List(ctx, p.db)
 	if err != nil {
 		return err
 	}
@@ -37,7 +38,7 @@ func (p *Product) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.R
 	ctx, span := trace.StartSpan(ctx, "handlers.Product.Retrieve")
 	defer span.End()
 
-	prod, err := product.Retrieve(ctx, p.db, params["id"])
+	prod, err := productPq.Retrieve(ctx, p.db, params["id"])
 	if err != nil {
 		switch err {
 		case product.ErrInvalidID:
@@ -73,7 +74,7 @@ func (p *Product) Create(ctx context.Context, w http.ResponseWriter, r *http.Req
 		return errors.Wrap(err, "decoding new product")
 	}
 
-	prod, err := product.Create(ctx, p.db, claims, np, v.Now)
+	prod, err := productPq.Create(ctx, p.db, claims, np, v.Now)
 	if err != nil {
 		return errors.Wrapf(err, "creating new product: %+v", np)
 	}
@@ -102,7 +103,7 @@ func (p *Product) Update(ctx context.Context, w http.ResponseWriter, r *http.Req
 		return errors.Wrap(err, "")
 	}
 
-	if err := product.Update(ctx, p.db, claims, params["id"], up, v.Now); err != nil {
+	if err := productPq.Update(ctx, p.db, claims, params["id"], up, v.Now); err != nil {
 		switch err {
 		case product.ErrInvalidID:
 			return web.NewRequestError(err, http.StatusBadRequest)
@@ -123,7 +124,7 @@ func (p *Product) Delete(ctx context.Context, w http.ResponseWriter, r *http.Req
 	ctx, span := trace.StartSpan(ctx, "handlers.Product.Delete")
 	defer span.End()
 
-	if err := product.Delete(ctx, p.db, params["id"]); err != nil {
+	if err := productPq.Delete(ctx, p.db, params["id"]); err != nil {
 		switch err {
 		case product.ErrInvalidID:
 			return web.NewRequestError(err, http.StatusBadRequest)

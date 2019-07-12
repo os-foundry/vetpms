@@ -9,14 +9,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 	"github.com/os-foundry/vetpms/internal/platform/auth"
 	"github.com/os-foundry/vetpms/internal/platform/database"
 	"github.com/os-foundry/vetpms/internal/platform/database/databasetest"
 	"github.com/os-foundry/vetpms/internal/platform/web"
 	"github.com/os-foundry/vetpms/internal/schema"
-	"github.com/os-foundry/vetpms/internal/user"
-	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
+	userPq "github.com/os-foundry/vetpms/internal/user/postgres"
 )
 
 // Success and failure markers.
@@ -148,7 +148,7 @@ func (test *Test) Teardown() {
 func (test *Test) Token(email, pass string) string {
 	test.t.Helper()
 
-	claims, err := user.Authenticate(
+	claims, err := userPq.Authenticate(
 		context.Background(), test.DB, time.Now(),
 		email, pass,
 	)

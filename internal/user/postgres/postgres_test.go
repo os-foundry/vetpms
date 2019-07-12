@@ -1,4 +1,4 @@
-package user_test
+package postgres_test
 
 import (
 	"testing"
@@ -8,6 +8,7 @@ import (
 	"github.com/os-foundry/vetpms/internal/platform/auth"
 	"github.com/os-foundry/vetpms/internal/tests"
 	"github.com/os-foundry/vetpms/internal/user"
+	userPq "github.com/os-foundry/vetpms/internal/user/postgres"
 	"github.com/pkg/errors"
 )
 
@@ -38,13 +39,13 @@ func TestUser(t *testing.T) {
 				PasswordConfirm: "gophers",
 			}
 
-			u, err := user.Create(ctx, db, nu, now)
+			u, err := userPq.Create(ctx, db, nu, now)
 			if err != nil {
 				t.Fatalf("\t%s\tShould be able to create user : %s.", tests.Failed, err)
 			}
 			t.Logf("\t%s\tShould be able to create user.", tests.Success)
 
-			savedU, err := user.Retrieve(ctx, claims, db, u.ID)
+			savedU, err := userPq.Retrieve(ctx, claims, db, u.ID)
 			if err != nil {
 				t.Fatalf("\t%s\tShould be able to retrieve user by ID: %s.", tests.Failed, err)
 			}
@@ -60,12 +61,12 @@ func TestUser(t *testing.T) {
 				Email: tests.StringPointer("jacob@example.com"),
 			}
 
-			if err := user.Update(ctx, claims, db, u.ID, upd, now); err != nil {
+			if err := userPq.Update(ctx, claims, db, u.ID, upd, now); err != nil {
 				t.Fatalf("\t%s\tShould be able to update user : %s.", tests.Failed, err)
 			}
 			t.Logf("\t%s\tShould be able to update user.", tests.Success)
 
-			savedU, err = user.Retrieve(ctx, claims, db, u.ID)
+			savedU, err = userPq.Retrieve(ctx, claims, db, u.ID)
 			if err != nil {
 				t.Fatalf("\t%s\tShould be able to retrieve user : %s.", tests.Failed, err)
 			}
@@ -87,12 +88,12 @@ func TestUser(t *testing.T) {
 				t.Logf("\t%s\tShould be able to see updates to Email.", tests.Success)
 			}
 
-			if err := user.Delete(ctx, db, u.ID); err != nil {
+			if err := userPq.Delete(ctx, db, u.ID); err != nil {
 				t.Fatalf("\t%s\tShould be able to delete user : %s.", tests.Failed, err)
 			}
 			t.Logf("\t%s\tShould be able to delete user.", tests.Success)
 
-			savedU, err = user.Retrieve(ctx, claims, db, u.ID)
+			savedU, err = userPq.Retrieve(ctx, claims, db, u.ID)
 			if errors.Cause(err) != user.ErrNotFound {
 				t.Fatalf("\t%s\tShould NOT be able to retrieve user : %s.", tests.Failed, err)
 			}
@@ -122,13 +123,13 @@ func TestAuthenticate(t *testing.T) {
 
 			now := time.Date(2018, time.October, 1, 0, 0, 0, 0, time.UTC)
 
-			u, err := user.Create(ctx, db, nu, now)
+			u, err := userPq.Create(ctx, db, nu, now)
 			if err != nil {
 				t.Fatalf("\t%s\tShould be able to create user : %s.", tests.Failed, err)
 			}
 			t.Logf("\t%s\tShould be able to create user.", tests.Success)
 
-			claims, err := user.Authenticate(ctx, db, now, "anna@example.com", "goroutines")
+			claims, err := userPq.Authenticate(ctx, db, now, "anna@example.com", "goroutines")
 			if err != nil {
 				t.Fatalf("\t%s\tShould be able to generate claims : %s.", tests.Failed, err)
 			}
