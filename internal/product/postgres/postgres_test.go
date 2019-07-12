@@ -15,7 +15,7 @@ import (
 
 // TestProduct validates the full set of CRUD operations on Product values.
 func TestProduct(t *testing.T) {
-	db, teardown := tests.NewUnit(t)
+	db, teardown := tests.NewPqUnit(t)
 	defer teardown()
 
 	t.Log("Given the need to work with Product records.")

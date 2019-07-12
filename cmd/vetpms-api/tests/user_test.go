@@ -20,12 +20,12 @@ import (
 
 // TestUsers is the entry point for testing user management functions.
 func TestUsers(t *testing.T) {
-	test := tests.NewIntegration(t)
+	test := tests.NewIntegration(t, "postgres")
 	defer test.Teardown()
 
 	shutdown := make(chan os.Signal, 1)
 	tests := UserTests{
-		app:        handlers.API(shutdown, test.Log, test.DB, test.Authenticator),
+		app:        handlers.API(shutdown, test.Log, test.Pq, test.Authenticator),
 		userToken:  test.Token("user@example.com", "gophers"),
 		adminToken: test.Token("admin@example.com", "gophers"),
 	}

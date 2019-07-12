@@ -16,7 +16,9 @@ import (
 	"github.com/os-foundry/vetpms/internal/platform/database/databasetest"
 	"github.com/os-foundry/vetpms/internal/platform/web"
 	"github.com/os-foundry/vetpms/internal/schema"
+	userBolt "github.com/os-foundry/vetpms/internal/user/bolt"
 	userPq "github.com/os-foundry/vetpms/internal/user/postgres"
+	bolt "go.etcd.io/bbolt"
 )
 
 // Success and failure markers.
@@ -40,7 +42,7 @@ const (
 //
 // It returns the database to use as well as a function to call at the end of
 // the test.
-func NewUnit(t *testing.T) (*sqlx.DB, func()) {
+func NewPqUnit(t *testing.T) (*sqlx.DB, func()) {
 	t.Helper()
 
 	c := databasetest.StartContainer(t)
@@ -92,9 +94,37 @@ func NewUnit(t *testing.T) (*sqlx.DB, func()) {
 	return db, teardown
 }
 
+// NewUnit creates a test database inside a Docker container. It creates the
+// required table structure but the database is otherwise empty.
+//
+// It does not return errors as this intended for testing only. Instead it will
+// call Fatal on the provided testing.T if anything goes wrong.
+//
+// It returns the database to use as well as a function to call at the end of
+// the test.
+func NewBoltUnit(t *testing.T) (*bolt.DB, func()) {
+	t.Helper()
+
+	db, err := bolt.Open("test.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
+	if err != nil {
+		t.Fatalf("opening database connection: %v", err)
+	}
+
+	// teardown is the function that should be invoked when the caller is done
+	// with the database.
+	teardown := func() {
+		t.Helper()
+		db.Close()
+		os.Remove("test.db")
+	}
+
+	return db, teardown
+}
+
 // Test owns state for running and shutting down tests.
 type Test struct {
-	DB            *sqlx.DB
+	Pq            *sqlx.DB
+	Bolt          *bolt.DB
 	Log           *log.Logger
 	Authenticator *auth.Authenticator
 
@@ -103,15 +133,8 @@ type Test struct {
 }
 
 // NewIntegration creates a database, seeds it, constructs an authenticator.
-func NewIntegration(t *testing.T) *Test {
+func NewIntegration(t *testing.T, tp string) *Test {
 	t.Helper()
-
-	// Initialize and seed database. Store the cleanup function call later.
-	db, cleanup := NewUnit(t)
-
-	if err := schema.Seed(db); err != nil {
-		t.Fatal(err)
-	}
 
 	// Create the logger to use.
 	logger := log.New(os.Stdout, "TEST : ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
@@ -130,13 +153,33 @@ func NewIntegration(t *testing.T) *Test {
 		t.Fatal(err)
 	}
 
-	return &Test{
-		DB:            db,
+	test := Test{
 		Log:           logger,
 		Authenticator: authenticator,
 		t:             t,
-		cleanup:       cleanup,
 	}
+
+	switch tp {
+	case "postgres":
+		// Initialize and seed database. Store the cleanup function call later.
+		db, cleanup := NewPqUnit(t)
+		test.Pq = db
+		test.cleanup = cleanup
+
+		if err := schema.Seed(db); err != nil {
+			t.Fatal(err)
+		}
+
+	case "bolt":
+		db, cleanup := NewBoltUnit(t)
+		test.Bolt = db
+		test.cleanup = cleanup
+
+	default:
+		t.Fatal("tp should be postgres or bolt")
+	}
+
+	return &test
 }
 
 // Teardown releases any resources used for the test.
@@ -148,12 +191,29 @@ func (test *Test) Teardown() {
 func (test *Test) Token(email, pass string) string {
 	test.t.Helper()
 
-	claims, err := userPq.Authenticate(
-		context.Background(), test.DB, time.Now(),
-		email, pass,
+	var (
+		claims auth.Claims
+		err    error
 	)
-	if err != nil {
-		test.t.Fatal(err)
+
+	if test.Pq != nil {
+		claims, err = userPq.Authenticate(
+			context.Background(), test.Pq, time.Now(),
+			email, pass,
+		)
+		if err != nil {
+			test.t.Fatal(err)
+		}
+	}
+
+	if test.Bolt != nil {
+		claims, err = userBolt.Authenticate(
+			context.Background(), test.Bolt, time.Now(),
+			email, pass,
+		)
+		if err != nil {
+			test.t.Fatal(err)
+		}
 	}
 
 	tkn, err := test.Authenticator.GenerateToken(claims)

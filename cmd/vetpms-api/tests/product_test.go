@@ -24,12 +24,12 @@ import (
 // subtest needs a fresh instance of the application it can make it or it
 // should be its own Test* function.
 func TestProducts(t *testing.T) {
-	test := tests.NewIntegration(t)
+	test := tests.NewIntegration(t, "postgres")
 	defer test.Teardown()
 
 	shutdown := make(chan os.Signal, 1)
 	tests := ProductTests{
-		app:       handlers.API(shutdown, test.Log, test.DB, test.Authenticator),
+		app:       handlers.API(shutdown, test.Log, test.Pq, test.Authenticator),
 		userToken: test.Token("admin@example.com", "gophers"),
 	}
 

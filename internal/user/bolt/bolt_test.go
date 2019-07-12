@@ -1,4 +1,4 @@
-package postgres_test
+package bolt_test
 
 import (
 	"testing"
@@ -8,13 +8,13 @@ import (
 	"github.com/os-foundry/vetpms/internal/platform/auth"
 	"github.com/os-foundry/vetpms/internal/tests"
 	"github.com/os-foundry/vetpms/internal/user"
-	userDB "github.com/os-foundry/vetpms/internal/user/postgres"
+	userDB "github.com/os-foundry/vetpms/internal/user/bolt"
 	"github.com/pkg/errors"
 )
 
 // TestUser validates the full set of CRUD operations on User values.
 func TestUser(t *testing.T) {
-	db, teardown := tests.NewPqUnit(t)
+	db, teardown := tests.NewBoltUnit(t)
 	defer teardown()
 
 	t.Log("Given the need to work with User records.")
@@ -104,7 +104,7 @@ func TestUser(t *testing.T) {
 
 // TestAuthenticate validates the behavior around authenticating users.
 func TestAuthenticate(t *testing.T) {
-	db, teardown := tests.NewPqUnit(t)
+	db, teardown := tests.NewBoltUnit(t)
 	defer teardown()
 
 	t.Log("Given the need to authenticate users")
