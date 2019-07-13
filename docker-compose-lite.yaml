@@ -1,0 +1,29 @@
+# https://docs.docker.com/compose/compose-file
+# docker-compose -f docker-compose-lite.yaml up
+# docker-compose -f docker-compose-lite.yaml stop
+# docker-compose -f docker-compose-lite.yaml down
+#
+# This compose file will launch a lite instance of vetpms-api with:
+# - Bolt as its database
+# - Zipkin disabled
+# - Debug routes disabled
+version: '3'
+
+networks:
+  shared-network:
+    driver: bridge
+
+services:
+
+  # This is the core CRUD based service.
+  vetpms-api:
+    container_name: vetpms-api
+    networks:
+      - shared-network
+    image: gcr.io/vetpms-api/vetpms-api-amd64:1.0
+    ports:
+      - 3000:3000 # CRUD API
+      # - 4000:4000 # DEBUG API
+    environment:
+      - VETPMS_DB_TYPE=bolt
+      # - GODEBUG=gctrace=1

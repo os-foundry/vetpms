@@ -50,6 +50,8 @@ services:
     environment:
       - VETPMS_DB_HOST=db
       - VETPMS_DB_DISABLE_TLS=1 # This is only disabled for our development enviroment.
+      - VETPMS_ZIPKIN_ENABLE=true
+      - VETPMS_WEB_DEBUG_HOST=:4000
       # - GODEBUG=gctrace=1
     depends_on:
       - metrics

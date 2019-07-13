@@ -11,6 +11,7 @@ import (
 	_ "net/http/pprof" // Register the pprof handlers
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -22,9 +23,15 @@ import (
 	"github.com/os-foundry/vetpms/internal/platform/auth"
 	"github.com/os-foundry/vetpms/internal/platform/conf"
 	"github.com/os-foundry/vetpms/internal/platform/database"
+	"github.com/os-foundry/vetpms/internal/platform/logtracer"
+	"github.com/os-foundry/vetpms/internal/product"
+	productBolt "github.com/os-foundry/vetpms/internal/product/bolt"
 	productPq "github.com/os-foundry/vetpms/internal/product/postgres"
+	"github.com/os-foundry/vetpms/internal/user"
+	userBolt "github.com/os-foundry/vetpms/internal/user/bolt"
 	userPq "github.com/os-foundry/vetpms/internal/user/postgres"
 	"github.com/pkg/errors"
+	bolt "go.etcd.io/bbolt"
 	"go.opencensus.io/trace"
 )
 
@@ -64,17 +71,23 @@ func run() error {
 	var cfg struct {
 		Web struct {
 			APIHost         string        `conf:"default:0.0.0.0:3000"`
-			DebugHost       string        `conf:"default:0.0.0.0:4000"`
+			DebugHost       string        // `conf:"default:0.0.0.0:4000"`
 			ReadTimeout     time.Duration `conf:"default:5s"`
 			WriteTimeout    time.Duration `conf:"default:5s"`
 			ShutdownTimeout time.Duration `conf:"default:5s"`
 		}
 		DB struct {
+			Type       string `conf:"default:postgres"` // Can be postgres or bolt
 			User       string `conf:"default:postgres"`
 			Password   string `conf:"default:postgres,noprint"`
 			Host       string `conf:"default:localhost"`
 			Name       string `conf:"default:postgres"`
 			DisableTLS bool   `conf:"default:false"`
+
+			// Only required for bolt
+			File        string        `conf:"default:vetpms.db"`
+			Permissions os.FileMode   `conf:"default:0660"`
+			Timeout     time.Duration `conf:"default:1s"`
 		}
 		Auth struct {
 			KeyID          string `conf:"default:1"`
@@ -82,6 +95,7 @@ func run() error {
 			Algorithm      string `conf:"default:RS256"`
 		}
 		Zipkin struct {
+			Enabled       bool    `conf:"default:false"`
 			LocalEndpoint string  `conf:"default:0.0.0.0:3000"`
 			ReporterURI   string  `conf:"default:http://zipkin:9411/api/v2/spans"`
 			ServiceName   string  `conf:"default:vetpms-api"`
@@ -137,47 +151,77 @@ func run() error {
 	}
 
 	// =========================================================================
-	// Start Database
+	// Start Database and initialize storages
 
 	log.Println("main : Started : Initializing database support")
 
-	db, err := database.Open(database.Config{
-		User:       cfg.DB.User,
-		Password:   cfg.DB.Password,
-		Host:       cfg.DB.Host,
-		Name:       cfg.DB.Name,
-		DisableTLS: cfg.DB.DisableTLS,
-	})
-	if err != nil {
-		return errors.Wrap(err, "connecting to db")
+	var (
+		ust user.Storage
+		pst product.Storage
+	)
+	switch strings.ToLower(cfg.DB.Type) {
+
+	case "postgres":
+		db, err := database.Open(database.Config{
+			User:       cfg.DB.User,
+			Password:   cfg.DB.Password,
+			Host:       cfg.DB.Host,
+			Name:       cfg.DB.Name,
+			DisableTLS: cfg.DB.DisableTLS,
+		})
+		if err != nil {
+			return errors.Wrap(err, "connecting to db")
+		}
+
+		ust = userPq.Postgres{db}
+		pst = productPq.Postgres{db}
+
+		defer func() {
+			log.Printf("main : Database Stopping : %s", cfg.DB.Host)
+			db.Close()
+		}()
+
+	case "bolt":
+		db, err := bolt.Open(cfg.DB.File, cfg.DB.Permissions, &bolt.Options{Timeout: cfg.DB.Timeout})
+		if err != nil {
+			return errors.Wrap(err, "connecting to db")
+		}
+
+		ust = userBolt.Bolt{db}
+		pst = productBolt.Bolt{db}
+
+		defer func() {
+			log.Printf("main : Database Stopping : %s", cfg.DB.Host)
+			db.Close()
+		}()
 	}
-	defer func() {
-		log.Printf("main : Database Stopping : %s", cfg.DB.Host)
-		db.Close()
-	}()
 
 	// =========================================================================
 	// Start Tracing Support
 
-	log.Println("main : Started : Initializing zipkin tracing support")
+	if cfg.Zipkin.Enabled {
+		log.Println("main : Started : Initializing zipkin tracing support")
+		localEndpoint, err := openzipkin.NewEndpoint("vetpms-api", cfg.Zipkin.LocalEndpoint)
+		if err != nil {
+			return err
+		}
 
-	localEndpoint, err := openzipkin.NewEndpoint("vetpms-api", cfg.Zipkin.LocalEndpoint)
-	if err != nil {
-		return err
+		reporter := zipkinHTTP.NewReporter(cfg.Zipkin.ReporterURI)
+		ze := zipkin.NewExporter(reporter, localEndpoint)
+
+		trace.RegisterExporter(ze)
+		trace.ApplyConfig(trace.Config{
+			DefaultSampler: trace.ProbabilitySampler(cfg.Zipkin.Probability),
+		})
+
+		defer func() {
+			log.Printf("main : Tracing Stopping : %s", cfg.Zipkin.LocalEndpoint)
+			reporter.Close()
+		}()
+	} else {
+		log.Println("main : Started : Initializing logtracer tracing support")
+		trace.RegisterExporter(&logtracer.Tracer{log})
 	}
-
-	reporter := zipkinHTTP.NewReporter(cfg.Zipkin.ReporterURI)
-	ze := zipkin.NewExporter(reporter, localEndpoint)
-
-	trace.RegisterExporter(ze)
-	trace.ApplyConfig(trace.Config{
-		DefaultSampler: trace.ProbabilitySampler(cfg.Zipkin.Probability),
-	})
-
-	defer func() {
-		log.Printf("main : Tracing Stopping : %s", cfg.Zipkin.LocalEndpoint)
-		reporter.Close()
-	}()
 
 	// =========================================================================
 	// Start Debug Service
@@ -187,12 +231,14 @@ func run() error {
 	//
 	// Not concerned with shutting this down when the application is shutdown.
 
-	log.Println("main : Started : Initializing debugging support")
+	if cfg.Web.DebugHost != "" {
+		log.Println("main : Started : Initializing debugging support")
 
-	go func() {
-		log.Printf("main : Debug Listening %s", cfg.Web.DebugHost)
-		log.Printf("main : Debug Listener closed : %v", http.ListenAndServe(cfg.Web.DebugHost, http.DefaultServeMux))
-	}()
+		go func() {
+			log.Printf("main : Debug Listening %s", cfg.Web.DebugHost)
+			log.Printf("main : Debug Listener closed : %v", http.ListenAndServe(cfg.Web.DebugHost, http.DefaultServeMux))
+		}()
+	}
 
 	// =========================================================================
 	// Start API Service
@@ -203,9 +249,6 @@ func run() error {
 	// Use a buffered channel because the signal package requires it.
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
-
-	ust := userPq.Postgres{db}
-	pst := productPq.Postgres{db}
 
 	api := http.Server{
 		Addr:         cfg.Web.APIHost,

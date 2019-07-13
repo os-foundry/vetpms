@@ -40,6 +40,8 @@ github.com/openzipkin/zipkin-go/idgenerator
 github.com/openzipkin/zipkin-go/propagation
 # github.com/pkg/errors v0.8.0
 github.com/pkg/errors
+# go.etcd.io/bbolt v1.3.3
+go.etcd.io/bbolt
 # go.opencensus.io v0.21.0
 go.opencensus.io/trace
 go.opencensus.io/plugin/ochttp
@@ -61,6 +63,8 @@ go.opencensus.io/resource
 # golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
 golang.org/x/crypto/bcrypt
 golang.org/x/crypto/blowfish
+# golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a
+golang.org/x/sys/unix
 # gopkg.in/go-playground/validator.v9 v9.28.0
 gopkg.in/go-playground/validator.v9
 gopkg.in/go-playground/validator.v9/translations/en
