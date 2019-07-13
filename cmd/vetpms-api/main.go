@@ -85,7 +85,7 @@ func run() error {
 			DisableTLS bool   `conf:"default:false"`
 
 			// Only required for bolt
-			File        string        `conf:"default:vetpms.db"`
+			File        string        `conf:"default:/opt/vetpms/data/vetpms.db"`
 			Permissions os.FileMode   `conf:"default:0660"`
 			Timeout     time.Duration `conf:"default:1s"`
 		}
@@ -182,6 +182,10 @@ func run() error {
 		}()
 
 	case "bolt":
+		if err := database.CheckAndPrepareBolt(cfg.DB.File, cfg.DB.Permissions); err != nil {
+			return errors.Wrap(err, "preparing bolt filepath")
+		}
+
 		db, err := bolt.Open(cfg.DB.File, cfg.DB.Permissions, &bolt.Options{Timeout: cfg.DB.Timeout})
 		if err != nil {
 			return errors.Wrap(err, "connecting to db")

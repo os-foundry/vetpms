@@ -18,8 +18,10 @@ import (
 	"github.com/os-foundry/vetpms/internal/platform/database"
 	"github.com/os-foundry/vetpms/internal/schema"
 	"github.com/os-foundry/vetpms/internal/user"
-	"github.com/os-foundry/vetpms/internal/user/postgres"
+	userBolt "github.com/os-foundry/vetpms/internal/user/bolt"
+	userPq "github.com/os-foundry/vetpms/internal/user/postgres"
 	"github.com/pkg/errors"
+	bolt "go.etcd.io/bbolt"
 )
 
 func main() {
@@ -36,11 +38,17 @@ func run() error {
 
 	var cfg struct {
 		DB struct {
+			Type       string `conf:"default:postgres"` // Can be postgres or bolt
 			User       string `conf:"default:postgres"`
 			Password   string `conf:"default:postgres,noprint"`
 			Host       string `conf:"default:localhost"`
 			Name       string `conf:"default:postgres"`
 			DisableTLS bool   `conf:"default:false"`
+
+			// Only required for bolt
+			File        string        `conf:"default:/opt/vetpms/data/vetpms.db"`
+			Permissions os.FileMode   `conf:"default:0660"`
+			Timeout     time.Duration `conf:"default:1s"`
 		}
 		Args conf.Args
 	}
@@ -57,23 +65,58 @@ func run() error {
 		return errors.Wrap(err, "error: parsing config")
 	}
 
-	// This is used for multiple commands below.
-	dbConfig := database.Config{
-		User:       cfg.DB.User,
-		Password:   cfg.DB.Password,
-		Host:       cfg.DB.Host,
-		Name:       cfg.DB.Name,
-		DisableTLS: cfg.DB.DisableTLS,
+	var (
+		ust      user.Storage
+		activeDB interface{}
+	)
+
+	switch cfg.DB.Type {
+	case "postgres":
+		dbConfig := database.Config{
+			User:       cfg.DB.User,
+			Password:   cfg.DB.Password,
+			Host:       cfg.DB.Host,
+			Name:       cfg.DB.Name,
+			DisableTLS: cfg.DB.DisableTLS,
+		}
+
+		db, err := database.Open(dbConfig)
+		if err != nil {
+			return errors.Wrap(err, "connecting to postgres")
+		}
+
+		ust = userPq.Postgres{db}
+		activeDB = db
+
+		defer db.Close()
+
+	case "bolt":
+		if err := database.CheckAndPrepareBolt(cfg.DB.File, cfg.DB.Permissions); err != nil {
+			return errors.Wrap(err, "preparing bolt filepath")
+		}
+
+		db, err := bolt.Open(cfg.DB.File, cfg.DB.Permissions, &bolt.Options{Timeout: cfg.DB.Timeout})
+		if err != nil {
+			return errors.Wrap(err, "connecting to bolt")
+		}
+
+		ust = userBolt.Bolt{db}
+		activeDB = db
+
+		defer db.Close()
+
+	default:
+		return fmt.Errorf("database type should be bolt or postgres")
 	}
 
 	var err error
 	switch cfg.Args.Num(0) {
 	case "migrate":
-		err = migrate(dbConfig)
+		err = migrate(activeDB)
 	case "seed":
-		err = seed(dbConfig)
+		err = seed(activeDB)
 	case "useradd":
-		err = useradd(dbConfig, cfg.Args.Num(1), cfg.Args.Num(2))
+		err = useradd(ust, cfg.Args.Num(1), cfg.Args.Num(2))
 	case "keygen":
 		err = keygen(cfg.Args.Num(1))
 	default:
@@ -87,13 +130,7 @@ func run() error {
 	return nil
 }
 
-func migrate(cfg database.Config) error {
-	db, err := database.Open(cfg)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
+func migrate(db interface{}) error {
 	if err := schema.Migrate(db); err != nil {
 		return err
 	}
@@ -102,13 +139,7 @@ func migrate(cfg database.Config) error {
 	return nil
 }
 
-func seed(cfg database.Config) error {
-	db, err := database.Open(cfg)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
+func seed(db interface{}) error {
 	if err := schema.Seed(db); err != nil {
 		return err
 	}
@@ -117,14 +148,7 @@ func seed(cfg database.Config) error {
 	return nil
 }
 
-func useradd(cfg database.Config, email, password string) error {
-	db, err := database.Open(cfg)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-	st := postgres.Postgres{db}
-
+func useradd(st user.Storage, email, password string) error {
 	if email == "" || password == "" {
 		return errors.New("useradd command must be called with two additional arguments for email and password")
 	}

@@ -2,10 +2,15 @@ package database
 
 import (
 	"context"
+	"fmt"
 	"net/url"
+	"os"
+	"path"
+	"path/filepath"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" // The database driver in use.
+	"github.com/pkg/errors"
 )
 
 // Config is the required properties to use the database.
@@ -49,4 +54,24 @@ func Open(cfg Config) (*sqlx.DB, error) {
 // otherwise.
 type StatusChecker interface {
 	StatusCheck(ctx context.Context) error
+}
+
+// CheckAndPrepareBolt checks if the filepath is valid and creates it
+// on the system.
+func CheckAndPrepareBolt(file string, perm os.FileMode) error {
+	absp, err := filepath.Abs(file)
+	if err != nil {
+		return errors.Wrap(err, "getting absolute filepath")
+	}
+
+	dir, file := path.Split(absp)
+	if dir == "" || file == "" {
+		return fmt.Errorf("%s is an invalid filepath", file)
+	}
+
+	// Create the path. Continue if the path already exists.
+	if err := os.MkdirAll(dir, perm); err != nil && !os.IsExist(err) {
+		return errors.Wrapf(err, "creating %s", dir)
+	}
+	return nil
 }
