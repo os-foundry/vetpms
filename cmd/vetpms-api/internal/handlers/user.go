@@ -4,18 +4,17 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/os-foundry/vetpms/internal/platform/auth"
 	"github.com/os-foundry/vetpms/internal/platform/web"
 	"github.com/os-foundry/vetpms/internal/user"
-	userPq "github.com/os-foundry/vetpms/internal/user/postgres"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 )
 
 // User represents the User API method handler set.
 type User struct {
-	db            *sqlx.DB
+	// db            *sqlx.DB
+	st            user.Storage
 	authenticator *auth.Authenticator
 
 	// ADD OTHER STATE LIKE THE LOGGER AND CONFIG HERE.
@@ -26,7 +25,7 @@ func (u *User) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	ctx, span := trace.StartSpan(ctx, "handlers.User.List")
 	defer span.End()
 
-	usrs, err := userPq.List(ctx, u.db)
+	usrs, err := u.st.List(ctx)
 	if err != nil {
 		return err
 	}
@@ -44,7 +43,7 @@ func (u *User) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return errors.New("claims missing from context")
 	}
 
-	usr, err := userPq.Retrieve(ctx, claims, u.db, params["id"])
+	usr, err := u.st.Retrieve(ctx, claims, params["id"])
 	if err != nil {
 		switch err {
 		case user.ErrInvalidID:
@@ -76,7 +75,7 @@ func (u *User) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrap(err, "")
 	}
 
-	usr, err := userPq.Create(ctx, u.db, nu, v.Now)
+	usr, err := u.st.Create(ctx, nu, v.Now)
 	if err != nil {
 		return errors.Wrapf(err, "User: %+v", &usr)
 	}
@@ -104,7 +103,7 @@ func (u *User) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrap(err, "")
 	}
 
-	err := userPq.Update(ctx, claims, u.db, params["id"], upd, v.Now)
+	err := u.st.Update(ctx, claims, params["id"], upd, v.Now)
 	if err != nil {
 		switch err {
 		case user.ErrInvalidID:
@@ -126,7 +125,7 @@ func (u *User) Delete(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ctx, span := trace.StartSpan(ctx, "handlers.User.Delete")
 	defer span.End()
 
-	err := userPq.Delete(ctx, u.db, params["id"])
+	err := u.st.Delete(ctx, params["id"])
 	if err != nil {
 		switch err {
 		case user.ErrInvalidID:
@@ -160,7 +159,7 @@ func (u *User) Token(ctx context.Context, w http.ResponseWriter, r *http.Request
 		return web.NewRequestError(err, http.StatusUnauthorized)
 	}
 
-	claims, err := userPq.Authenticate(ctx, u.db, v.Now, email, pass)
+	claims, err := u.st.Authenticate(ctx, v.Now, email, pass)
 	if err != nil {
 		switch err {
 		case user.ErrAuthenticationFailure:

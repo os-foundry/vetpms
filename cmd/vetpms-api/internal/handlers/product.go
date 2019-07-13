@@ -4,18 +4,17 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/os-foundry/vetpms/internal/platform/auth"
 	"github.com/os-foundry/vetpms/internal/platform/web"
 	"github.com/os-foundry/vetpms/internal/product"
-	productDB "github.com/os-foundry/vetpms/internal/product/postgres"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 )
 
 // Product represents the Product API method handler set.
 type Product struct {
-	db *sqlx.DB
+	// db *sqlx.DB
+	st product.Storage
 
 	// ADD OTHER STATE LIKE THE LOGGER IF NEEDED.
 }
@@ -25,7 +24,7 @@ func (p *Product) List(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	ctx, span := trace.StartSpan(ctx, "handlers.Product.List")
 	defer span.End()
 
-	products, err := productDB.List(ctx, p.db)
+	products, err := p.st.List(ctx)
 	if err != nil {
 		return err
 	}
@@ -38,7 +37,7 @@ func (p *Product) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.R
 	ctx, span := trace.StartSpan(ctx, "handlers.Product.Retrieve")
 	defer span.End()
 
-	prod, err := productDB.Retrieve(ctx, p.db, params["id"])
+	prod, err := p.st.Retrieve(ctx, params["id"])
 	if err != nil {
 		switch err {
 		case product.ErrInvalidID:
@@ -74,7 +73,7 @@ func (p *Product) Create(ctx context.Context, w http.ResponseWriter, r *http.Req
 		return errors.Wrap(err, "decoding new product")
 	}
 
-	prod, err := productDB.Create(ctx, p.db, claims, np, v.Now)
+	prod, err := p.st.Create(ctx, claims, np, v.Now)
 	if err != nil {
 		return errors.Wrapf(err, "creating new product: %+v", np)
 	}
@@ -103,7 +102,7 @@ func (p *Product) Update(ctx context.Context, w http.ResponseWriter, r *http.Req
 		return errors.Wrap(err, "")
 	}
 
-	if err := productDB.Update(ctx, p.db, claims, params["id"], up, v.Now); err != nil {
+	if err := p.st.Update(ctx, claims, params["id"], up, v.Now); err != nil {
 		switch err {
 		case product.ErrInvalidID:
 			return web.NewRequestError(err, http.StatusBadRequest)
@@ -124,7 +123,7 @@ func (p *Product) Delete(ctx context.Context, w http.ResponseWriter, r *http.Req
 	ctx, span := trace.StartSpan(ctx, "handlers.Product.Delete")
 	defer span.End()
 
-	if err := productDB.Delete(ctx, p.db, params["id"]); err != nil {
+	if err := p.st.Delete(ctx, params["id"]); err != nil {
 		switch err {
 		case product.ErrInvalidID:
 			return web.NewRequestError(err, http.StatusBadRequest)

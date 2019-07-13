@@ -1,6 +1,8 @@
 package product
 
 import (
+	"bytes"
+	"encoding/gob"
 	"time"
 )
 
@@ -15,6 +17,32 @@ type Product struct {
 	UserID      string    `db:"user_id" json:"user_id"`           // ID of the user who created the product.
 	DateCreated time.Time `db:"date_created" json:"date_created"` // When the product was added.
 	DateUpdated time.Time `db:"date_updated" json:"date_updated"` // When the product record was last modified.
+}
+
+// Encode gob encodes all product data into a slice of bytes.
+func (p *Product) Encode() ([]byte, error) {
+	var buf bytes.Buffer
+	if err := gob.NewEncoder(&buf).Encode(p); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// Decode gob decodes a slice of bytes into the product.
+func (p *Product) Decode(b []byte) error {
+	if err := gob.NewDecoder(bytes.NewBuffer(b)).Decode(&p); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Decode creates a new Product from a gob encoded byte slice.
+func Decode(b []byte) (*Product, error) {
+	var p Product
+	if err := p.Decode(b); err != nil {
+		return nil, err
+	}
+	return &p, nil
 }
 
 // NewProduct is what we require from clients when adding a Product.

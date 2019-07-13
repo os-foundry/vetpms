@@ -14,8 +14,10 @@ import (
 	"github.com/os-foundry/vetpms/cmd/vetpms-api/internal/handlers"
 	"github.com/os-foundry/vetpms/internal/platform/auth"
 	"github.com/os-foundry/vetpms/internal/platform/web"
+	productPq "github.com/os-foundry/vetpms/internal/product/postgres"
 	"github.com/os-foundry/vetpms/internal/tests"
 	"github.com/os-foundry/vetpms/internal/user"
+	userPq "github.com/os-foundry/vetpms/internal/user/postgres"
 )
 
 // TestUsers is the entry point for testing user management functions.
@@ -25,7 +27,7 @@ func TestUsers(t *testing.T) {
 
 	shutdown := make(chan os.Signal, 1)
 	tests := UserTests{
-		app:        handlers.API(shutdown, test.Log, test.Pq, test.Authenticator),
+		app:        handlers.API(shutdown, test.Log, userPq.Postgres{test.Pq}, productPq.Postgres{test.Pq}, test.Authenticator),
 		userToken:  test.Token("user@example.com", "gophers"),
 		adminToken: test.Token("admin@example.com", "gophers"),
 	}
@@ -401,7 +403,7 @@ func (ut *UserTests) crudUser(t *testing.T) {
 // postUser201 validates a user can be created with the endpoint.
 func (ut *UserTests) postUser201(t *testing.T) user.User {
 	nu := user.NewUser{
-		Name:            "Bill Kennedy",
+		Name:            "William Doe",
 		Email:           "bill@example.com",
 		Roles:           []string{auth.RoleAdmin},
 		Password:        "gophers",
@@ -439,7 +441,7 @@ func (ut *UserTests) postUser201(t *testing.T) user.User {
 			// Define what we wanted to receive. We will just trust the generated
 			// fields like ID and Dates so we copy u.
 			want := u
-			want.Name = "Bill Kennedy"
+			want.Name = "William Doe"
 			want.Email = "bill@example.com"
 			want.Roles = []string{auth.RoleAdmin}
 
@@ -501,7 +503,7 @@ func (ut *UserTests) getUser200(t *testing.T, id string) {
 			// fields like Dates so we copy p.
 			want := u
 			want.ID = id
-			want.Name = "Bill Kennedy"
+			want.Name = "William Doe"
 			want.Email = "bill@example.com"
 			want.Roles = []string{auth.RoleAdmin}
 
@@ -515,7 +517,7 @@ func (ut *UserTests) getUser200(t *testing.T, id string) {
 
 // putUser204 validates updating a user that does exist.
 func (ut *UserTests) putUser204(t *testing.T, id string) {
-	body := `{"name": "Jacob Walker"}`
+	body := `{"name": "John Doe"}`
 
 	r := httptest.NewRequest("PUT", "/v1/users/"+id, strings.NewReader(body))
 	w := httptest.NewRecorder()
@@ -550,8 +552,8 @@ func (ut *UserTests) putUser204(t *testing.T, id string) {
 				t.Fatalf("\t%s\tShould be able to unmarshal the response : %v", tests.Failed, err)
 			}
 
-			if ru.Name != "Jacob Walker" {
-				t.Fatalf("\t%s\tShould see an updated Name : got %q want %q", tests.Failed, ru.Name, "Jacob Walker")
+			if ru.Name != "John Doe" {
+				t.Fatalf("\t%s\tShould see an updated Name : got %q want %q", tests.Failed, ru.Name, "John Doe")
 			}
 			t.Logf("\t%s\tShould see an updated Name.", tests.Success)
 
@@ -565,7 +567,7 @@ func (ut *UserTests) putUser204(t *testing.T, id string) {
 
 // putUser403 validates that a user can't modify users unless they are an admin.
 func (ut *UserTests) putUser403(t *testing.T, id string) {
-	body := `{"name": "Anna Walker"}`
+	body := `{"name": "Jane Doe"}`
 
 	r := httptest.NewRequest("PUT", "/v1/users/"+id, strings.NewReader(body))
 	w := httptest.NewRecorder()

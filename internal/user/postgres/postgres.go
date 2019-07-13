@@ -16,15 +16,21 @@ import (
 
 const usersCollection = "users"
 
+// Postgres implements the Storage interface for
+// the postgres database
+type Postgres struct {
+	DB *sqlx.DB
+}
+
 // List retrieves a list of existing users from the database.
-func List(ctx context.Context, db *sqlx.DB) ([]user.User, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.user.List")
+func (st Postgres) List(ctx context.Context) ([]user.User, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.user.postgres.List")
 	defer span.End()
 
 	users := []user.User{}
 	const q = `SELECT * FROM users`
 
-	if err := db.SelectContext(ctx, &users, q); err != nil {
+	if err := st.DB.SelectContext(ctx, &users, q); err != nil {
 		return nil, errors.Wrap(err, "selecting users")
 	}
 
@@ -32,8 +38,8 @@ func List(ctx context.Context, db *sqlx.DB) ([]user.User, error) {
 }
 
 // Retrieve gets the specified user from the database.
-func Retrieve(ctx context.Context, claims auth.Claims, db *sqlx.DB, id string) (*user.User, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.user.Retrieve")
+func (st Postgres) Retrieve(ctx context.Context, claims auth.Claims, id string) (*user.User, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.user.postgres.Retrieve")
 	defer span.End()
 
 	if _, err := uuid.Parse(id); err != nil {
@@ -47,7 +53,7 @@ func Retrieve(ctx context.Context, claims auth.Claims, db *sqlx.DB, id string) (
 
 	var u user.User
 	const q = `SELECT * FROM users WHERE user_id = $1`
-	if err := db.GetContext(ctx, &u, q, id); err != nil {
+	if err := st.DB.GetContext(ctx, &u, q, id); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, user.ErrNotFound
 		}
@@ -59,8 +65,8 @@ func Retrieve(ctx context.Context, claims auth.Claims, db *sqlx.DB, id string) (
 }
 
 // Create inserts a new user into the database.
-func Create(ctx context.Context, db *sqlx.DB, n user.NewUser, now time.Time) (*user.User, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.user.Create")
+func (st Postgres) Create(ctx context.Context, n user.NewUser, now time.Time) (*user.User, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.user.postgres.Create")
 	defer span.End()
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(n.Password), bcrypt.DefaultCost)
@@ -81,7 +87,7 @@ func Create(ctx context.Context, db *sqlx.DB, n user.NewUser, now time.Time) (*u
 	const q = `INSERT INTO users
 		(user_id, name, email, password_hash, roles, date_created, date_updated)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)`
-	_, err = db.ExecContext(
+	_, err = st.DB.ExecContext(
 		ctx, q,
 		u.ID, u.Name, u.Email,
 		u.PasswordHash, u.Roles,
@@ -95,11 +101,11 @@ func Create(ctx context.Context, db *sqlx.DB, n user.NewUser, now time.Time) (*u
 }
 
 // Update replaces a user document in the database.
-func Update(ctx context.Context, claims auth.Claims, db *sqlx.DB, id string, upd user.UpdateUser, now time.Time) error {
-	ctx, span := trace.StartSpan(ctx, "internal.user.Update")
+func (st Postgres) Update(ctx context.Context, claims auth.Claims, id string, upd user.UpdateUser, now time.Time) error {
+	ctx, span := trace.StartSpan(ctx, "internal.user.postgres.Update")
 	defer span.End()
 
-	u, err := Retrieve(ctx, claims, db, id)
+	u, err := st.Retrieve(ctx, claims, id)
 	if err != nil {
 		return err
 	}
@@ -130,7 +136,7 @@ func Update(ctx context.Context, claims auth.Claims, db *sqlx.DB, id string, upd
 		"password_hash" = $5,
 		"date_updated" = $6
 		WHERE user_id = $1`
-	_, err = db.ExecContext(ctx, q, id,
+	_, err = st.DB.ExecContext(ctx, q, id,
 		u.Name, u.Email, u.Roles,
 		u.PasswordHash, u.DateUpdated,
 	)
@@ -142,8 +148,8 @@ func Update(ctx context.Context, claims auth.Claims, db *sqlx.DB, id string, upd
 }
 
 // Delete removes a user from the database.
-func Delete(ctx context.Context, db *sqlx.DB, id string) error {
-	ctx, span := trace.StartSpan(ctx, "internal.user.Delete")
+func (st Postgres) Delete(ctx context.Context, id string) error {
+	ctx, span := trace.StartSpan(ctx, "internal.user.postgres.Delete")
 	defer span.End()
 
 	if _, err := uuid.Parse(id); err != nil {
@@ -152,7 +158,7 @@ func Delete(ctx context.Context, db *sqlx.DB, id string) error {
 
 	const q = `DELETE FROM users WHERE user_id = $1`
 
-	if _, err := db.ExecContext(ctx, q, id); err != nil {
+	if _, err := st.DB.ExecContext(ctx, q, id); err != nil {
 		return errors.Wrapf(err, "deleting user %s", id)
 	}
 
@@ -162,14 +168,14 @@ func Delete(ctx context.Context, db *sqlx.DB, id string) error {
 // Authenticate finds a user by their email and verifies their password. On
 // success it returns a Claims value representing this user. The claims can be
 // used to generate a token for future authentication.
-func Authenticate(ctx context.Context, db *sqlx.DB, now time.Time, email, password string) (auth.Claims, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.user.Authenticate")
+func (st Postgres) Authenticate(ctx context.Context, now time.Time, email, password string) (auth.Claims, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.user.postgres.Authenticate")
 	defer span.End()
 
 	const q = `SELECT * FROM users WHERE email = $1`
 
 	var u user.User
-	if err := db.GetContext(ctx, &u, q, email); err != nil {
+	if err := st.DB.GetContext(ctx, &u, q, email); err != nil {
 
 		// Normally we would return ErrNotFound in this scenario but we do not want
 		// to leak to an unauthenticated user which emails are in the system.
@@ -190,4 +196,19 @@ func Authenticate(ctx context.Context, db *sqlx.DB, now time.Time, email, passwo
 	// and generate their token.
 	claims := auth.NewClaims(u.ID, u.Roles, now, time.Hour)
 	return claims, nil
+}
+
+// StatusCheck returns nil if it can successfully talk to the database. It
+// returns a non-nil error otherwise.
+func (st Postgres) StatusCheck(ctx context.Context) error {
+	ctx, span := trace.StartSpan(ctx, "internal.user.postgres.StatusCheck")
+	defer span.End()
+
+	// Run a simple query to determine connectivity. The db has a "Ping" method
+	// but it can false-positive when it was previously able to talk to the
+	// database but the database has since gone away. Running this query forces a
+	// round trip to the database.
+	const q = `SELECT true`
+	var tmp bool
+	return st.DB.QueryRowContext(ctx, q).Scan(&tmp)
 }

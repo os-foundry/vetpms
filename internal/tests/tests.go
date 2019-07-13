@@ -15,9 +15,16 @@ import (
 	"github.com/os-foundry/vetpms/internal/platform/database"
 	"github.com/os-foundry/vetpms/internal/platform/database/databasetest"
 	"github.com/os-foundry/vetpms/internal/platform/web"
+	"github.com/os-foundry/vetpms/internal/product"
+	boltProduct "github.com/os-foundry/vetpms/internal/product/bolt"
 	"github.com/os-foundry/vetpms/internal/schema"
-	userBolt "github.com/os-foundry/vetpms/internal/user/bolt"
-	userPq "github.com/os-foundry/vetpms/internal/user/postgres"
+	"github.com/os-foundry/vetpms/internal/user"
+	boltUser "github.com/os-foundry/vetpms/internal/user/bolt"
+
+	// boltProduct "github.com/os-foundry/vetpms/internal/product/bolt"
+	pqProduct "github.com/os-foundry/vetpms/internal/product/postgres"
+	"github.com/os-foundry/vetpms/internal/user/postgres"
+	pqUser "github.com/os-foundry/vetpms/internal/user/postgres"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -121,6 +128,40 @@ func NewBoltUnit(t *testing.T) (*bolt.DB, func()) {
 	return db, teardown
 }
 
+// NewUserStorageUnit creates user storage connected to a database,
+// seeds it and constructs an authenticator.
+func NewUserStorageUnit(t *testing.T, tp string) (user.Storage, func()) {
+	t.Helper()
+
+	switch tp {
+	case "postgres":
+		db, teardown := NewPqUnit(t)
+		return pqUser.Postgres{db}, teardown
+	case "bolt":
+		db, teardown := NewBoltUnit(t)
+		return boltUser.Bolt{db}, teardown
+	}
+	t.Fatal("tp should be bolt or postgres")
+	return nil, nil
+}
+
+// NewProductStorageUnit creates user storage connected to a database,
+// seeds it and constructs an authenticator.
+func NewProductStorageUnit(t *testing.T, tp string) (product.Storage, func()) {
+	t.Helper()
+
+	switch tp {
+	case "postgres":
+		db, teardown := NewPqUnit(t)
+		return pqProduct.Postgres{db}, teardown
+	case "bolt":
+		db, teardown := NewBoltUnit(t)
+		return boltProduct.Bolt{db}, teardown
+	}
+	t.Fatal("tp should be bolt or postgres")
+	return nil, nil
+}
+
 // Test owns state for running and shutting down tests.
 type Test struct {
 	Pq            *sqlx.DB
@@ -197,8 +238,9 @@ func (test *Test) Token(email, pass string) string {
 	)
 
 	if test.Pq != nil {
-		claims, err = userPq.Authenticate(
-			context.Background(), test.Pq, time.Now(),
+		st := postgres.Postgres{test.Pq}
+		claims, err = st.Authenticate(
+			context.Background(), time.Now(),
 			email, pass,
 		)
 		if err != nil {
@@ -207,8 +249,9 @@ func (test *Test) Token(email, pass string) string {
 	}
 
 	if test.Bolt != nil {
-		claims, err = userBolt.Authenticate(
-			context.Background(), test.Bolt, time.Now(),
+		st := boltUser.Bolt{test.Bolt}
+		claims, err = st.Authenticate(
+			context.Background(), time.Now(),
 			email, pass,
 		)
 		if err != nil {

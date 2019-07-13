@@ -15,13 +15,19 @@ import (
 
 const usersCollection = "users"
 
+// Bolt implements the Storage interface for
+// the bolt database
+type Bolt struct {
+	DB *bolt.DB
+}
+
 // List retrieves a list of existing users from the database.
-func List(ctx context.Context, db *bolt.DB) ([]user.User, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.user.List")
+func (st Bolt) List(ctx context.Context) ([]user.User, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.user.bolt.List")
 	defer span.End()
 
 	users := []user.User{}
-	if err := db.View(func(tx *bolt.Tx) error {
+	if err := st.DB.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(usersCollection))
 		return bucket.ForEach(func(k []byte, v []byte) error {
 			u, err := user.Decode(v)
@@ -39,8 +45,8 @@ func List(ctx context.Context, db *bolt.DB) ([]user.User, error) {
 }
 
 // Retrieve gets the specified user from the database.
-func Retrieve(ctx context.Context, claims auth.Claims, db *bolt.DB, id string) (*user.User, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.user.Retrieve")
+func (st Bolt) Retrieve(ctx context.Context, claims auth.Claims, id string) (*user.User, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.user.bolt.Retrieve")
 	defer span.End()
 
 	if _, err := uuid.Parse(id); err != nil {
@@ -53,7 +59,7 @@ func Retrieve(ctx context.Context, claims auth.Claims, db *bolt.DB, id string) (
 	}
 
 	var u user.User
-	if err := db.View(func(tx *bolt.Tx) error {
+	if err := st.DB.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(usersCollection))
 		v := bucket.Get([]byte(id))
 		if len(v) == 0 {
@@ -76,8 +82,8 @@ func Retrieve(ctx context.Context, claims auth.Claims, db *bolt.DB, id string) (
 }
 
 // Create inserts a new user into the database.
-func Create(ctx context.Context, db *bolt.DB, n user.NewUser, now time.Time) (*user.User, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.user.Create")
+func (st Bolt) Create(ctx context.Context, n user.NewUser, now time.Time) (*user.User, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.user.bolt.Create")
 	defer span.End()
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(n.Password), bcrypt.DefaultCost)
@@ -95,7 +101,7 @@ func Create(ctx context.Context, db *bolt.DB, n user.NewUser, now time.Time) (*u
 		DateUpdated:  now.UTC(),
 	}
 
-	if err := db.Update(func(tx *bolt.Tx) error {
+	if err := st.DB.Update(func(tx *bolt.Tx) error {
 		bucket, err := tx.CreateBucketIfNotExists([]byte(usersCollection))
 		if err != nil {
 			return errors.Wrap(err, "getting bucket")
@@ -121,12 +127,12 @@ func Create(ctx context.Context, db *bolt.DB, n user.NewUser, now time.Time) (*u
 }
 
 // Update replaces a user document in the database.
-func Update(ctx context.Context, claims auth.Claims, db *bolt.DB, id string, upd user.UpdateUser, now time.Time) error {
-	ctx, span := trace.StartSpan(ctx, "internal.user.Update")
+func (st Bolt) Update(ctx context.Context, claims auth.Claims, id string, upd user.UpdateUser, now time.Time) error {
+	ctx, span := trace.StartSpan(ctx, "internal.user.bolt.Update")
 	defer span.End()
 
 	var oldEmail string
-	u, err := Retrieve(ctx, claims, db, id)
+	u, err := st.Retrieve(ctx, claims, id)
 	if err != nil {
 		return err
 	}
@@ -151,7 +157,7 @@ func Update(ctx context.Context, claims auth.Claims, db *bolt.DB, id string, upd
 
 	u.DateUpdated = now
 
-	if err := db.Update(func(tx *bolt.Tx) error {
+	if err := st.DB.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(usersCollection))
 		v, err := u.Encode()
 		if err != nil {
@@ -180,8 +186,8 @@ func Update(ctx context.Context, claims auth.Claims, db *bolt.DB, id string, upd
 }
 
 // Delete removes a user from the database.
-func Delete(ctx context.Context, db *bolt.DB, id string) error {
-	ctx, span := trace.StartSpan(ctx, "internal.user.Delete")
+func (st Bolt) Delete(ctx context.Context, id string) error {
+	ctx, span := trace.StartSpan(ctx, "internal.user.bolt.Delete")
 	defer span.End()
 
 	if _, err := uuid.Parse(id); err != nil {
@@ -189,7 +195,7 @@ func Delete(ctx context.Context, db *bolt.DB, id string) error {
 	}
 
 	var u user.User
-	if err := db.View(func(tx *bolt.Tx) error {
+	if err := st.DB.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(usersCollection))
 		v := bucket.Get([]byte(id))
 		if len(v) == 0 {
@@ -205,7 +211,7 @@ func Delete(ctx context.Context, db *bolt.DB, id string) error {
 		return err
 	}
 
-	if err := db.Update(func(tx *bolt.Tx) error {
+	if err := st.DB.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(usersCollection))
 
 		if err := bucket.Delete([]byte(id)); err != nil {
@@ -227,12 +233,12 @@ func Delete(ctx context.Context, db *bolt.DB, id string) error {
 // Authenticate finds a user by their email and verifies their password. On
 // success it returns a Claims value representing this user. The claims can be
 // used to generate a token for future authentication.
-func Authenticate(ctx context.Context, db *bolt.DB, now time.Time, email, password string) (auth.Claims, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.user.Authenticate")
+func (st Bolt) Authenticate(ctx context.Context, now time.Time, email, password string) (auth.Claims, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.user.bolt.Authenticate")
 	defer span.End()
 
 	var id string
-	if err := db.View(func(tx *bolt.Tx) error {
+	if err := st.DB.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(usersCollection))
 		v := bucket.Get([]byte(email))
 		if len(v) == 0 {
@@ -248,7 +254,7 @@ func Authenticate(ctx context.Context, db *bolt.DB, now time.Time, email, passwo
 	}
 
 	var u user.User
-	if err := db.View(func(tx *bolt.Tx) error {
+	if err := st.DB.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(usersCollection))
 		v := bucket.Get([]byte(id))
 		if len(v) == 0 {
@@ -277,4 +283,20 @@ func Authenticate(ctx context.Context, db *bolt.DB, now time.Time, email, passwo
 	// and generate their token.
 	claims := auth.NewClaims(u.ID, u.Roles, now, time.Hour)
 	return claims, nil
+}
+
+// StatusCheck returns nil if it can successfully talk to the database. It
+// returns a non-nil error otherwise.
+func (st Bolt) StatusCheck(ctx context.Context) error {
+	ctx, span := trace.StartSpan(ctx, "internal.user.bolt.StatusCheck")
+	defer span.End()
+
+	// Run a simple query to determine connectivity. The db has a "Ping" method
+	// but it can false-positive when it was previously able to talk to the
+	// database but the database has since gone away. Running this query forces a
+	// round trip to the database.
+	// const q = `SELECT true`
+	// var tmp bool
+	// return st.DB.QueryRowContext(ctx, q).Scan(&tmp)
+	return nil
 }

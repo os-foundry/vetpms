@@ -22,6 +22,8 @@ import (
 	"github.com/os-foundry/vetpms/internal/platform/auth"
 	"github.com/os-foundry/vetpms/internal/platform/conf"
 	"github.com/os-foundry/vetpms/internal/platform/database"
+	productPq "github.com/os-foundry/vetpms/internal/product/postgres"
+	userPq "github.com/os-foundry/vetpms/internal/user/postgres"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 )
@@ -202,9 +204,12 @@ func run() error {
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
 
+	ust := userPq.Postgres{db}
+	pst := productPq.Postgres{db}
+
 	api := http.Server{
 		Addr:         cfg.Web.APIHost,
-		Handler:      handlers.API(shutdown, log, db, authenticator),
+		Handler:      handlers.API(shutdown, log, ust, pst, authenticator),
 		ReadTimeout:  cfg.Web.ReadTimeout,
 		WriteTimeout: cfg.Web.WriteTimeout,
 	}

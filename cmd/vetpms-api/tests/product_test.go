@@ -14,7 +14,9 @@ import (
 	"github.com/os-foundry/vetpms/cmd/vetpms-api/internal/handlers"
 	"github.com/os-foundry/vetpms/internal/platform/web"
 	"github.com/os-foundry/vetpms/internal/product"
+	productPq "github.com/os-foundry/vetpms/internal/product/postgres"
 	"github.com/os-foundry/vetpms/internal/tests"
+	userPq "github.com/os-foundry/vetpms/internal/user/postgres"
 )
 
 // TestProducts runs a series of tests to exercise Product behavior from the
@@ -29,7 +31,7 @@ func TestProducts(t *testing.T) {
 
 	shutdown := make(chan os.Signal, 1)
 	tests := ProductTests{
-		app:       handlers.API(shutdown, test.Log, test.Pq, test.Authenticator),
+		app:       handlers.API(shutdown, test.Log, userPq.Postgres{test.Pq}, productPq.Postgres{test.Pq}, test.Authenticator),
 		userToken: test.Token("admin@example.com", "gophers"),
 	}
 
