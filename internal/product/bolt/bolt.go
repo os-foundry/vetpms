@@ -28,14 +28,48 @@ func (st Bolt) List(ctx context.Context) ([]product.Product, error) {
 	products := []product.Product{}
 	if err := st.DB.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(productsCollection))
-		return bucket.ForEach(func(k []byte, v []byte) error {
+		if err := bucket.ForEach(func(k []byte, v []byte) error {
 			u, err := product.Decode(v)
 			if err != nil {
 				return errors.Wrap(err, "decoding product")
 			}
 			products = append(products, *u)
 			return nil
-		})
+		}); err != nil {
+			return err
+		}
+
+		pmap := make(map[string]int)
+		for k, v := range products {
+			pmap[v.ID] = k
+		}
+
+		salesb := tx.Bucket([]byte("sales"))
+		if err := salesb.ForEach(func(k []byte, v []byte) error {
+			s, err := product.DecodeSale(v)
+			if err != nil {
+				return errors.Wrap(err, "decoding sale")
+			}
+
+			// Get the product index,
+			// skip if it doesn't exist in the map
+			i, ok := pmap[s.ProductID]
+			if !ok {
+				return nil
+			}
+			// Skip if another product ID
+			if s.ProductID != products[i].ID {
+				return nil
+			}
+			products[i].Sold += s.Quantity
+			products[i].Revenue += s.Paid
+
+			return nil
+		}); err != nil {
+			return errors.Wrap(err, "getting sales")
+		}
+
+		return nil
 	}); err != nil {
 		return nil, errors.Wrap(err, "selecting products")
 	}
@@ -60,10 +94,7 @@ func (st Bolt) Create(ctx context.Context, user auth.Claims, np product.NewProdu
 	}
 
 	if err := st.DB.Update(func(tx *bolt.Tx) error {
-		bucket, err := tx.CreateBucketIfNotExists([]byte(productsCollection))
-		if err != nil {
-			return errors.Wrap(err, "getting bucket")
-		}
+		bucket := tx.Bucket([]byte(productsCollection))
 
 		v, err := p.Encode()
 		if err != nil {
@@ -100,6 +131,25 @@ func (st Bolt) Retrieve(ctx context.Context, id string) (*product.Product, error
 
 		if err := p.Decode(v); err != nil {
 			return errors.Wrap(err, "decoding product")
+		}
+
+		salesb := tx.Bucket([]byte("sales"))
+		if err := salesb.ForEach(func(k []byte, v []byte) error {
+			s, err := product.DecodeSale(v)
+			if err != nil {
+				return errors.Wrap(err, "decoding sale")
+			}
+
+			// Skip if another product ID
+			if s.ProductID != p.ID {
+				return nil
+			}
+			p.Sold += s.Quantity
+			p.Revenue += s.Paid
+
+			return nil
+		}); err != nil {
+			return errors.Wrap(err, "getting sales")
 		}
 
 		return nil

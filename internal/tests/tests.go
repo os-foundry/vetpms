@@ -117,6 +117,10 @@ func NewBoltUnit(t *testing.T) (*bolt.DB, func()) {
 		t.Fatalf("opening database connection: %v", err)
 	}
 
+	if err := schema.Migrate(db); err != nil {
+		t.Fatalf("migrating: %s", err)
+	}
+
 	// teardown is the function that should be invoked when the caller is done
 	// with the database.
 	teardown := func() {
@@ -215,6 +219,10 @@ func NewIntegration(t *testing.T, tp string) *Test {
 		db, cleanup := NewBoltUnit(t)
 		test.Bolt = db
 		test.cleanup = cleanup
+
+		if err := schema.Seed(db); err != nil {
+			t.Fatal(err)
+		}
 
 	default:
 		t.Fatal("tp should be postgres or bolt")

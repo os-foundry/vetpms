@@ -102,10 +102,7 @@ func (st Bolt) Create(ctx context.Context, n user.NewUser, now time.Time) (*user
 	}
 
 	if err := st.DB.Update(func(tx *bolt.Tx) error {
-		bucket, err := tx.CreateBucketIfNotExists([]byte(usersCollection))
-		if err != nil {
-			return errors.Wrap(err, "getting bucket")
-		}
+		bucket := tx.Bucket([]byte(usersCollection))
 
 		v, err := u.Encode()
 		if err != nil {
@@ -199,7 +196,7 @@ func (st Bolt) Delete(ctx context.Context, id string) error {
 		bucket := tx.Bucket([]byte(usersCollection))
 		v := bucket.Get([]byte(id))
 		if len(v) == 0 {
-			return user.ErrNotFound
+			return nil
 		}
 
 		if err := u.Decode(v); err != nil {
@@ -208,7 +205,7 @@ func (st Bolt) Delete(ctx context.Context, id string) error {
 
 		return nil
 	}); err != nil {
-		return err
+		return errors.Wrapf(err, "deleting user %s", id)
 	}
 
 	if err := st.DB.Update(func(tx *bolt.Tx) error {
@@ -224,7 +221,7 @@ func (st Bolt) Delete(ctx context.Context, id string) error {
 
 		return nil
 	}); err != nil {
-		return errors.Wrap(err, "deleting user")
+		return errors.Wrapf(err, "deleting user %s", id)
 	}
 
 	return nil

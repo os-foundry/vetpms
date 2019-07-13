@@ -76,6 +76,32 @@ type Sale struct {
 	DateCreated time.Time `db:"date_created" json:"date_created"`
 }
 
+// Encode gob encodes all Sale data into a slice of bytes.
+func (s *Sale) Encode() ([]byte, error) {
+	var buf bytes.Buffer
+	if err := gob.NewEncoder(&buf).Encode(s); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// Decode gob decodes a slice of bytes into the Sale.
+func (s *Sale) Decode(b []byte) error {
+	if err := gob.NewDecoder(bytes.NewBuffer(b)).Decode(&s); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Decode creates a new Sale from a gob encoded byte slice.
+func DecodeSale(b []byte) (*Sale, error) {
+	var s Sale
+	if err := s.Decode(b); err != nil {
+		return nil, err
+	}
+	return &s, nil
+}
+
 // NewSale is what we require from clients for recording new transactions.
 type NewSale struct {
 	Quantity int `json:"quantity" validate:"gte=0"`

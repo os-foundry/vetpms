@@ -14,35 +14,50 @@ import (
 	"github.com/os-foundry/vetpms/cmd/vetpms-api/internal/handlers"
 	"github.com/os-foundry/vetpms/internal/platform/auth"
 	"github.com/os-foundry/vetpms/internal/platform/web"
+	productBolt "github.com/os-foundry/vetpms/internal/product/bolt"
 	productPq "github.com/os-foundry/vetpms/internal/product/postgres"
 	"github.com/os-foundry/vetpms/internal/tests"
 	"github.com/os-foundry/vetpms/internal/user"
+	userBolt "github.com/os-foundry/vetpms/internal/user/bolt"
 	userPq "github.com/os-foundry/vetpms/internal/user/postgres"
 )
 
 // TestUsers is the entry point for testing user management functions.
 func TestUsers(t *testing.T) {
-	test := tests.NewIntegration(t, "postgres")
-	defer test.Teardown()
+	tt := []string{"postgres", "bolt"}
+	for _, tc := range tt {
+		test := tests.NewIntegration(t, tc)
+		defer test.Teardown()
 
-	shutdown := make(chan os.Signal, 1)
-	tests := UserTests{
-		app:        handlers.API(shutdown, test.Log, userPq.Postgres{test.Pq}, productPq.Postgres{test.Pq}, test.Authenticator),
-		userToken:  test.Token("user@example.com", "gophers"),
-		adminToken: test.Token("admin@example.com", "gophers"),
+		var handler http.Handler
+		shutdown := make(chan os.Signal, 1)
+		switch tc {
+		case "postgres":
+			handler = handlers.API(shutdown, test.Log, userPq.Postgres{test.Pq}, productPq.Postgres{test.Pq}, test.Authenticator)
+		case "bolt":
+			handler = handlers.API(shutdown, test.Log, userBolt.Bolt{test.Bolt}, productBolt.Bolt{test.Bolt}, test.Authenticator)
+		default:
+			t.Fatalf("test case should be bolt or postgres")
+		}
+
+		tests := UserTests{
+			app:        handler,
+			userToken:  test.Token("user@example.com", "gophers"),
+			adminToken: test.Token("admin@example.com", "gophers"),
+		}
+
+		t.Run("getToken401", tests.getToken401)
+		t.Run("getToken200", tests.getToken200)
+		t.Run("postUser400", tests.postUser400)
+		t.Run("postUser401", tests.postUser401)
+		t.Run("postUser403", tests.postUser403)
+		t.Run("getUser400", tests.getUser400)
+		t.Run("getUser403", tests.getUser403)
+		t.Run("getUser404", tests.getUser404)
+		t.Run("deleteUserNotFound", tests.deleteUserNotFound)
+		t.Run("putUser404", tests.putUser404)
+		t.Run("crudUsers", tests.crudUser)
 	}
-
-	t.Run("getToken401", tests.getToken401)
-	t.Run("getToken200", tests.getToken200)
-	t.Run("postUser400", tests.postUser400)
-	t.Run("postUser401", tests.postUser401)
-	t.Run("postUser403", tests.postUser403)
-	t.Run("getUser400", tests.getUser400)
-	t.Run("getUser403", tests.getUser403)
-	t.Run("getUser404", tests.getUser404)
-	t.Run("deleteUserNotFound", tests.deleteUserNotFound)
-	t.Run("putUser404", tests.putUser404)
-	t.Run("crudUsers", tests.crudUser)
 }
 
 // UserTests holds methods for each user subtest. This type allows passing

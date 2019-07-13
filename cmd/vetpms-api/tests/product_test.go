@@ -14,8 +14,10 @@ import (
 	"github.com/os-foundry/vetpms/cmd/vetpms-api/internal/handlers"
 	"github.com/os-foundry/vetpms/internal/platform/web"
 	"github.com/os-foundry/vetpms/internal/product"
+	productBolt "github.com/os-foundry/vetpms/internal/product/bolt"
 	productPq "github.com/os-foundry/vetpms/internal/product/postgres"
 	"github.com/os-foundry/vetpms/internal/tests"
+	userBolt "github.com/os-foundry/vetpms/internal/user/bolt"
 	userPq "github.com/os-foundry/vetpms/internal/user/postgres"
 )
 
@@ -26,22 +28,34 @@ import (
 // subtest needs a fresh instance of the application it can make it or it
 // should be its own Test* function.
 func TestProducts(t *testing.T) {
-	test := tests.NewIntegration(t, "postgres")
-	defer test.Teardown()
+	tt := []string{"postgres", "bolt"}
+	for _, tc := range tt {
+		test := tests.NewIntegration(t, tc)
+		defer test.Teardown()
 
-	shutdown := make(chan os.Signal, 1)
-	tests := ProductTests{
-		app:       handlers.API(shutdown, test.Log, userPq.Postgres{test.Pq}, productPq.Postgres{test.Pq}, test.Authenticator),
-		userToken: test.Token("admin@example.com", "gophers"),
+		var handler http.Handler
+		shutdown := make(chan os.Signal, 1)
+		switch tc {
+		case "postgres":
+			handler = handlers.API(shutdown, test.Log, userPq.Postgres{test.Pq}, productPq.Postgres{test.Pq}, test.Authenticator)
+		case "bolt":
+			handler = handlers.API(shutdown, test.Log, userBolt.Bolt{test.Bolt}, productBolt.Bolt{test.Bolt}, test.Authenticator)
+		default:
+			t.Fatalf("test case should be bolt or postgres")
+		}
+		tests := ProductTests{
+			app:       handler,
+			userToken: test.Token("admin@example.com", "gophers"),
+		}
+
+		t.Run("postProduct400", tests.postProduct400)
+		t.Run("postProduct401", tests.postProduct401)
+		t.Run("getProduct404", tests.getProduct404)
+		t.Run("getProduct400", tests.getProduct400)
+		t.Run("deleteProductNotFound", tests.deleteProductNotFound)
+		t.Run("putProduct404", tests.putProduct404)
+		t.Run("crudProducts", tests.crudProduct)
 	}
-
-	t.Run("postProduct400", tests.postProduct400)
-	t.Run("postProduct401", tests.postProduct401)
-	t.Run("getProduct404", tests.getProduct404)
-	t.Run("getProduct400", tests.getProduct400)
-	t.Run("deleteProductNotFound", tests.deleteProductNotFound)
-	t.Run("putProduct404", tests.putProduct404)
-	t.Run("crudProducts", tests.crudProduct)
 }
 
 // ProductTests holds methods for each product subtest. This type allows

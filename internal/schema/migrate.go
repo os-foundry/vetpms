@@ -1,18 +1,50 @@
 package schema
 
 import (
+	"fmt"
+
 	"github.com/GuiaBolso/darwin"
 	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
+	bbolt "go.etcd.io/bbolt"
 )
 
 // Migrate attempts to bring the schema for db up to date with the migrations
 // defined in this package.
-func Migrate(db *sqlx.DB) error {
-	driver := darwin.NewGenericDriver(db.DB, darwin.PostgresDialect{})
+func Migrate(dbi interface{}) error {
+	switch dbi.(type) {
 
-	d := darwin.New(driver, migrations, nil)
+	case *sqlx.DB:
+		db := dbi.(*sqlx.DB)
+		driver := darwin.NewGenericDriver(db.DB, darwin.PostgresDialect{})
 
-	return d.Migrate()
+		d := darwin.New(driver, migrations, nil)
+
+		return d.Migrate()
+
+	case *bbolt.DB:
+		db := dbi.(*bbolt.DB)
+		if err := db.Update(func(tx *bbolt.Tx) error {
+			if _, err := tx.CreateBucketIfNotExists([]byte("users")); err != nil {
+				return errors.Wrap(err, "creating bolt user bucket")
+			}
+
+			if _, err := tx.CreateBucketIfNotExists([]byte("products")); err != nil {
+				return errors.Wrap(err, "creating bolt products bucket")
+			}
+
+			if _, err := tx.CreateBucketIfNotExists([]byte("sales")); err != nil {
+				return errors.Wrap(err, "creating bolt sales bucket")
+			}
+
+			return nil
+		}); err != nil {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("unsupported database %T", dbi)
+
 }
 
 // migrations contains the queries needed to construct the database schema.
