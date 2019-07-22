@@ -30,8 +30,10 @@ func API(shutdown chan os.Signal, log *log.Logger, u user.Storage, p product.Sto
 		st:            u,
 		authenticator: authenticator,
 	}
+
 	app.Handle("GET", "/v1/users", uh.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
 	app.Handle("POST", "/v1/users", uh.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
+	app.Handle("GET", "/v1/user", uh.Retrieve, mid.Authenticate(authenticator))
 	app.Handle("GET", "/v1/users/:id", uh.Retrieve, mid.Authenticate(authenticator))
 	app.Handle("PUT", "/v1/users/:id", uh.Update, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
 	app.Handle("DELETE", "/v1/users/:id", uh.Delete, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))

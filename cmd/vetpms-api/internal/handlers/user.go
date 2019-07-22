@@ -43,7 +43,13 @@ func (u *User) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return errors.New("claims missing from context")
 	}
 
-	usr, err := u.st.Retrieve(ctx, claims, params["id"])
+	// Set the id to the provided id in params or to the current user
+	id := params["id"]
+	if id == "" {
+		id = claims.Subject
+	}
+
+	usr, err := u.st.Retrieve(ctx, claims, id)
 	if err != nil {
 		switch err {
 		case user.ErrInvalidID:

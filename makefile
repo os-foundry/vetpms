@@ -33,6 +33,9 @@ metrics:
 		.
 	docker system prune -f
 
+run:
+	docker run --rm -p 3000:3000 -e VETPMS_DB_TYPE=bolt -e VETPMS_DB_FILE=/tmp/vetpmd.db gcr.io/vetpms-api/vetpms-api-amd64:1.0
+
 up:
 	docker-compose up
 

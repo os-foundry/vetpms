@@ -1,0 +1,18 @@
+{
+ "name": "VetPMS",
+ "description": "Enter your project description",
+ "author": {
+  "name": "Arjan van Eersel",
+  "email": "arjan@sonemas.com"
+ },
+ "version": "0.1.0",
+ "binaryname": "vetpms-desktop",
+ "frontend": {
+  "dir": "frontend",
+  "install": "npm install",
+  "build": "npm run build",
+  "bridge": "src",
+  "serve": "npm run serve"
+ },
+ "WailsVersion": ""
+}
