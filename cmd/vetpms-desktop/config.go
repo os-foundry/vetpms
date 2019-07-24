@@ -11,6 +11,7 @@ type Config struct {
 	API         string
 	APIVersion  int
 	ReadTimeout time.Duration
+	Lang        string
 }
 
 func (c *Config) Validate() error {

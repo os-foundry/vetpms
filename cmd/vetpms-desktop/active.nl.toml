@@ -1,0 +1,19 @@
+[LoginOK]
+hash = "sha1-bda53064173f51f95c7edb3903d4d51a8e610536"
+other = "U bent succesvol ingelogd."
+
+[LogoutOK]
+hash = "sha1-c65ebe3404d68fe993025f2e1d96d61a274ed9b0"
+other = "U bent succesvol uitgelogd."
+
+[UserCreateOK]
+hash = "sha1-8231d82a09079ad75517da706a3cedb1e35a053f"
+other = "U heeft succesvol een nieuwe gebruiker aangemaakt."
+
+[UserDeleteOK]
+hash = "sha1-1cb62798b2ac6f7f579c662d51d648aa66069e8a"
+other = "U heeft succesvol de gebruiker verwijderd."
+
+[UserUpdateOK]
+hash = "sha1-463e3324121ebf9f40abc3d7671e260c87ad0b94"
+other = "U heeft succesvol de gebruiker opgeslagen."

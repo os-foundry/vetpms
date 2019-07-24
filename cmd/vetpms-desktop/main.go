@@ -24,6 +24,7 @@ func main() {
 	apiHost := flag.String("api", "127.0.0.1:3000", "API url")
 	apiVersion := flag.Int("api-version", 1, "API version")
 	readTimeout := flag.Duration("read-timeout", 3*time.Second, "Read timeout duration")
+	lang := flag.String("lang", "nl", "Language to use")
 	flag.Parse()
 
 	// =========================================================================
@@ -41,7 +42,7 @@ func main() {
 		Colour: "#131313",
 	})
 
-	core, err := NewCore(*apiHost, *apiVersion, *enableTLS, *readTimeout)
+	core, err := NewCore(*apiHost, *apiVersion, *enableTLS, *readTimeout, *lang)
 	if err != nil {
 		fmt.Printf("Couldn't start application: %v.\n", err)
 		os.Exit(1)

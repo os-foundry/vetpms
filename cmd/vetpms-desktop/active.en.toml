@@ -1,0 +1,5 @@
+LoginOK = "You have succesfully logged in."
+LogoutOK = "You have succesfully logged out."
+UserCreateOK = "You have succesfully created a new user."
+UserDeleteOK = "You have succesfully deleted the user."
+UserUpdateOK = "You have succesfully updated the user."
